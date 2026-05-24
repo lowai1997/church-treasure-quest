@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: church-treasure-quest
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: TREASURE_EVENT_CODE
+        sync: false
+      - key: BOX_PRICE
+        value: 1000

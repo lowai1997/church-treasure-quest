@@ -102,6 +102,41 @@ http://localhost:3000
 
 此專案由 Express 同時提供 API 與 `frontend` 靜態檔案，適合部署到 Render、Railway、Fly.io 或支援 Node.js 的伺服器。
 
+### 使用 Render 部署到網路
+
+1. 先建立 MongoDB Atlas database，取得 Node.js connection string，格式通常像：
+
+```env
+mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/church-treasure-quest?retryWrites=true&w=majority
+```
+
+2. 到 Render 建立 Blueprint 或 Web Service，選擇此 GitHub repo：
+
+```text
+https://github.com/lowai1997/church-treasure-quest
+```
+
+3. Render 會讀取根目錄的 `render.yaml`。部署時請填入：
+
+```env
+MONGODB_URI=你的 MongoDB Atlas connection string
+TREASURE_EVENT_CODE=教師發金幣用的活動密碼
+```
+
+4. 部署完成後，Render 會提供公開網址，例如：
+
+```text
+https://church-treasure-quest.onrender.com
+```
+
+5. 第一次部署完成後，可在 Render Shell 或本機執行一次 seed：
+
+```bash
+npm run seed
+```
+
+伺服器啟動時也會自動建立預設商店物品；若資料庫已有物品，不會重複新增。
+
 部署環境需設定：
 
 ```env
