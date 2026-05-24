@@ -468,10 +468,17 @@ const runAction = async (action, successMessage) => {
 };
 
 app.addEventListener('click', async (event) => {
+  const field = event.target.closest('.field');
   const authModeButton = event.target.closest('[data-auth-mode]');
   const authRoleButton = event.target.closest('[data-auth-role]');
   const nav = event.target.closest('[data-view]');
   const actionButton = event.target.closest('[data-action]');
+
+  if (field && !event.target.matches('input, select, button')) {
+    const input = field.querySelector('input, select');
+    input?.focus();
+    return;
+  }
 
   if (authModeButton) {
     state.authMode = authModeButton.dataset.authMode;

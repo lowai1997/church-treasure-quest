@@ -149,6 +149,8 @@ h1 {
 }
 
 .panel {
+  position: relative;
+  z-index: 1;
   padding: 18px;
 }
 
@@ -239,6 +241,8 @@ h1 {
 
 .field input,
 .field select {
+  position: relative;
+  z-index: 2;
   width: 100%;
   min-height: 50px;
   padding: 0 14px;
