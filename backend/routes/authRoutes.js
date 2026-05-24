@@ -1,0 +1,82 @@
+import express from 'express';
+import Player from '../models/Player.js';
+import { signToken, verifyToken } from '../middleware/auth.js';
+
+const router = express.Router();
+
+const normalizeRole = (role) => {
+  return role === 'teacher' ? 'teacher' : 'student';
+};
+
+router.post('/register', async (req, res, next) => {
+  try {
+    const { name, password, role, teacherKey } = req.body;
+    const normalizedName = String(name || '').trim();
+    const normalizedRole = normalizeRole(role);
+
+    if (!normalizedName || !password) {
+      return res.status(400).json({ message: '請輸入名稱與密碼。' });
+    }
+
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: '密碼至少需要 6 個字元。' });
+    }
+
+    if (
+      normalizedRole === 'teacher' &&
+      process.env.TEACHER_REGISTER_KEY &&
+      teacherKey !== process.env.TEACHER_REGISTER_KEY
+    ) {
+      return res.status(403).json({ message: '教師註冊金鑰不正確。' });
+    }
+
+    const player = await Player.create({
+      name: normalizedName,
+      password,
+      role: normalizedRole,
+      gold: normalizedRole === 'student' ? 300 : 0
+    });
+    const token = signToken(player);
+
+    return res.status(201).json({
+      token,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/login', async (req, res, next) => {
+  try {
+    const { name, password } = req.body;
+    const normalizedName = String(name || '').trim();
+
+    if (!normalizedName || !password) {
+      return res.status(400).json({ message: '請輸入名稱與密碼。' });
+    }
+
+    const player = await Player.findOne({ name: normalizedName });
+
+    if (!player || !(await player.comparePassword(password))) {
+      return res.status(401).json({ message: '名稱或密碼不正確。' });
+    }
+
+    const token = signToken(player);
+
+    return res.json({
+      token,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/me', verifyToken, (req, res) => {
+  return res.json({
+    player: req.user.toSafeObject()
+  });
+});
+
+export default router;

@@ -1,0 +1,26 @@
+{
+  "name": "church-treasure-quest",
+  "version": "1.0.0",
+  "description": "教會尋寶王 Church Treasure Quest - mobile web game with Express and MongoDB.",
+  "type": "module",
+  "main": "backend/server.js",
+  "scripts": {
+    "dev": "node --watch backend/server.js",
+    "start": "node backend/server.js",
+    "seed": "node backend/seed.js",
+    "check": "node --check backend/server.js && node --check backend/routes/authRoutes.js && node --check backend/routes/playerRoutes.js && node --check backend/routes/adminRoutes.js && node --check frontend/script.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0"
+  }
+}
