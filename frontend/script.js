@@ -26,6 +26,7 @@ const formatNumber = (value) => new Intl.NumberFormat('zh-Hant-TW').format(Numbe
 
 const totalPower = (player) => Number(player?.totalPower ?? 0);
 const rarityRank = { N: 1, R: 2, S: 3, SS: 4, SSS: 5 };
+const lowRaritySellValues = { N: 20, R: 40 };
 
 const sortInventoryItems = (items = []) => {
   return [...items].sort((left, right) => {
@@ -53,7 +54,13 @@ const sortInventoryItems = (items = []) => {
   });
 };
 
-const gearSellValue = (item) => Math.max(0, Math.floor(Number(item?.price || 0) * 0.5));
+const gearSellValue = (item) => {
+  if (lowRaritySellValues[item?.rarity] !== undefined) {
+    return lowRaritySellValues[item.rarity];
+  }
+
+  return Math.max(0, Math.floor(Number(item?.price || 0) * 0.5));
+};
 
 const equipmentSlots = [
   { key: 'weapon', label: '武器', limit: 2 },

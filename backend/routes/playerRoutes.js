@@ -8,6 +8,10 @@ import { rarityConfig } from '../utils/seedItems.js';
 const router = express.Router();
 const mysteryBoxPrice = 50;
 const gearSellRate = 0.5;
+const lowRaritySellValues = {
+  N: 20,
+  R: 40
+};
 
 const slotConfig = {
   weapon: { label: '武器', limit: 2 },
@@ -106,6 +110,16 @@ const createTradeItemSnapshot = (item) => ({
   price: item.price,
   power: item.power
 });
+
+const getGearSellValue = (item) => {
+  const fixedValue = lowRaritySellValues[item.rarity];
+
+  if (fixedValue !== undefined) {
+    return fixedValue;
+  }
+
+  return Math.max(0, Math.floor(Number(item.price || 0) * gearSellRate));
+};
 
 const unequipInventoryId = (player, inventoryId) => {
   Object.keys(slotConfig).forEach((slot) => {
@@ -221,7 +235,7 @@ router.post('/sellItem', verifyToken, requireRole('student'), async (req, res, n
       return res.status(404).json({ message: '找不到此裝備。' });
     }
 
-    const sellValue = Math.max(0, Math.floor(Number(inventoryItem.price || 0) * gearSellRate));
+    const sellValue = getGearSellValue(inventoryItem);
 
     unequipInventoryId(player, inventoryId);
     player.items = player.items.filter((item) => item.inventoryId !== inventoryId);

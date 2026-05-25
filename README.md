@@ -93,7 +93,7 @@ http://localhost:3000
 | `/api/openBox` | POST | 團員花費 50 金幣抽取神秘盒獲得隨機裝備 |
 | `/api/equipItem` | POST | 團員或導師穿戴背包中的裝備 |
 | `/api/unequipItem` | POST | 團員或導師卸下已穿戴裝備 |
-| `/api/sellItem` | POST | 團員賣出自己的裝備並取得 50% 金幣回收 |
+| `/api/sellItem` | POST | 團員賣出自己的裝備並取得金幣回收 |
 | `/api/tradePlayers` | GET | 團員取得可交換裝備的其他團員清單 |
 | `/api/trades` | GET / POST | 團員查看或送出裝備交換申請 |
 | `/api/trades/:tradeId/accept` | POST | 收到申請的團員接受交換 |
@@ -112,7 +112,7 @@ http://localhost:3000
 - 導師註冊帳號時需輸入 `TEACHER_REGISTER_KEY`，預設為 `Amen2026`。
 - 金幣不計入戰力；排行榜只依照已穿戴裝備的戰力排序。
 - 神秘盒固定 50 金幣一次，機率為 N 50%、R 25%、S 15%、SS 8%、SSS 2%。
-- 裝備賣出可回收原價 50% 金幣；交換裝備採申請制，需要對方接受才會互換。
+- 裝備賣出：N 回收 20 金幣、R 回收 40 金幣，S 或以上回收原價 50%；交換裝備採申請制，需要對方接受才會互換。
 - 裝備欄位限制：2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。
 
 ## 部署提示
