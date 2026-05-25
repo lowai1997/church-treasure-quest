@@ -16,6 +16,10 @@ export const errorHandler = (error, req, res, next) => {
     return res.status(409).json({ message: '此名稱已被使用，請換一個名稱。' });
   }
 
+  if (error.message === 'JWT_SECRET is not configured.') {
+    return res.status(500).json({ message: '伺服器尚未設定 JWT_SECRET，請到 Render Environment Variables 新增此變數。' });
+  }
+
   console.error(error);
   return res.status(500).json({ message: '伺服器發生錯誤，請稍後再試。' });
 };
