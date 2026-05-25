@@ -12,6 +12,9 @@ const bossKeyPrefix = 'hunt';
 const worldStepCount = 25;
 const initialFrontlineStep = 13;
 const bossVictoryReward = 500;
+const defaultEmergencyTaskTitle = '緊急守護任務';
+const defaultEmergencyTaskReward = 500;
+const maxEmergencyDifficulty = 5;
 
 const bossNames = [
   '墮翼‧阿茲撒爾',
@@ -142,6 +145,32 @@ const clampCampaignStep = (value) => {
   return Math.max(0, Math.min(worldStepCount, Math.floor(parsed)));
 };
 
+const clampEmergencyDifficulty = (value) => {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(maxEmergencyDifficulty, Math.floor(parsed)));
+};
+
+const normalizeEmergencyTask = (task = {}) => {
+  const title = String(task?.title || '').trim().slice(0, 60) || defaultEmergencyTaskTitle;
+  const reward = Math.min(999_999, toNonNegativeInteger(task?.reward, defaultEmergencyTaskReward));
+  const issuedBy = String(task?.issuedBy || '').trim().slice(0, 60);
+  const issuedAt = task?.issuedAt ? new Date(task.issuedAt) : null;
+
+  return {
+    active: Boolean(task?.active),
+    title,
+    difficulty: clampEmergencyDifficulty(task?.difficulty),
+    reward,
+    issuedAt: issuedAt && Number.isFinite(issuedAt.getTime()) ? issuedAt : null,
+    issuedBy
+  };
+};
+
 const addBossDeadline = (date, config = null) => new Date(date.getTime() + getBossDeadlineHours(config) * 60 * 60 * 1000);
 
 const getBossDeadlineAt = (boss) => {
@@ -232,6 +261,26 @@ const normalizeConfig = async (config) => {
     changed = true;
   } else if (config.campaignEvents.length > 50) {
     config.campaignEvents = trimCampaignEvents(config.campaignEvents);
+    changed = true;
+  }
+
+  const normalizedEmergencyTask = normalizeEmergencyTask(config.emergencyTask);
+  const currentEmergencyTask = config.emergencyTask || {};
+  const currentIssuedDate = currentEmergencyTask.issuedAt ? new Date(currentEmergencyTask.issuedAt) : null;
+  const currentIssuedAt =
+    currentIssuedDate && Number.isFinite(currentIssuedDate.getTime()) ? currentIssuedDate.toISOString() : '';
+  const normalizedIssuedAt = normalizedEmergencyTask.issuedAt ? normalizedEmergencyTask.issuedAt.toISOString() : '';
+
+  if (
+    !config.emergencyTask ||
+    Boolean(currentEmergencyTask.active) !== normalizedEmergencyTask.active ||
+    currentEmergencyTask.title !== normalizedEmergencyTask.title ||
+    Number(currentEmergencyTask.difficulty || 0) !== normalizedEmergencyTask.difficulty ||
+    Number(currentEmergencyTask.reward || 0) !== normalizedEmergencyTask.reward ||
+    (currentEmergencyTask.issuedBy || '') !== normalizedEmergencyTask.issuedBy ||
+    currentIssuedAt !== normalizedIssuedAt
+  ) {
+    config.emergencyTask = normalizedEmergencyTask;
     changed = true;
   }
 
@@ -638,7 +687,8 @@ const buildStatusPayload = async (currentUserId) => {
       worldSteps: config.worldSteps,
       frontlineStep: config.frontlineStep,
       bossDeadlineHours: getBossDeadlineHours(config),
-      lastCampaignEvent: publicLastCampaignEvent(config)
+      lastCampaignEvent: publicLastCampaignEvent(config),
+      emergencyTask: normalizeEmergencyTask(config.emergencyTask)
     }
   };
 };
@@ -756,6 +806,30 @@ router.post('/worldBoss/config', verifyToken, requireRole('teacher'), async (req
           ...(config.campaignEvents || [])
         ]);
       }
+    }
+
+    if (req.body.emergencyTask !== undefined) {
+      const currentTask = normalizeEmergencyTask(config.emergencyTask);
+      const requestedTask = req.body.emergencyTask || {};
+      const nextActive =
+        requestedTask.active === true || requestedTask.active === 'true' || requestedTask.active === 'on';
+      const nextTask = normalizeEmergencyTask({
+        ...requestedTask,
+        active: nextActive,
+        issuedAt: currentTask.issuedAt,
+        issuedBy: currentTask.issuedBy
+      });
+      const taskChanged =
+        currentTask.active !== nextTask.active ||
+        currentTask.title !== nextTask.title ||
+        currentTask.difficulty !== nextTask.difficulty ||
+        currentTask.reward !== nextTask.reward;
+
+      config.emergencyTask = {
+        ...nextTask,
+        issuedAt: nextActive && taskChanged ? new Date() : currentTask.issuedAt,
+        issuedBy: nextActive && taskChanged ? req.user.name : currentTask.issuedBy
+      };
     }
 
     await config.save();

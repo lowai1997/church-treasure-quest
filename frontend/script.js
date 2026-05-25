@@ -20,6 +20,7 @@ const state = {
   addGoldAmount: 100,
   boxReveal: null,
   petQuiz: null,
+  avatarPickerOpen: false,
   busy: false
 };
 
@@ -48,6 +49,14 @@ const avatarOptions = [
   { id: 'male-2', label: '書卷少年' },
   { id: 'female-1', label: '羽光少女' },
   { id: 'female-2', label: '寶石少女' }
+];
+
+const emergencyDifficultyOptions = [
+  { value: 1, label: '1 星光警戒' },
+  { value: 2, label: '2 裂隙擾動' },
+  { value: 3, label: '3 戰線危急' },
+  { value: 4, label: '4 聖殿告急' },
+  { value: 5, label: '5 終末攻勢' }
 ];
 
 const sortInventoryItems = (items = []) => {
@@ -123,6 +132,79 @@ const escapeHtml = (value) =>
     .replaceAll("'", '&#039;');
 
 const escapeAttr = escapeHtml;
+
+const assetImage = (src, alt = '', fallbackSrc = '') =>
+  src
+    ? `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" ${
+        fallbackSrc ? `data-fallback-src="${escapeAttr(fallbackSrc)}"` : ''
+      } onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; } else { this.remove(); }" />`
+    : '';
+
+const avatarImageAssets = {
+  'male-1': 'assets/icons/avatar-male-1.png',
+  'male-2': 'assets/icons/avatar-male-2.png',
+  'female-1': 'assets/icons/avatar-female-1.png',
+  'female-2': 'assets/icons/avatar-female-2.png'
+};
+
+const gearImageAssets = {
+  weapon: 'assets/icons/gear-weapon.png',
+  helmet: 'assets/icons/gear-helmet.png',
+  armor: 'assets/icons/gear-armor.png',
+  pants: 'assets/icons/gear-pants.png',
+  shoes: 'assets/icons/gear-shoes.png',
+  accessory: 'assets/icons/gear-accessory.png'
+};
+
+const weaponImageAssets = [
+  { pattern: /杖|書|法|聖|星|光|魔/, src: 'assets/icons/gear-weapon-staff.png' },
+  { pattern: /弓|弩|矢/, src: 'assets/icons/gear-weapon-bow.png' },
+  { pattern: /矛|槍|戟/, src: 'assets/icons/gear-weapon-spear.png' },
+  { pattern: /斧/, src: 'assets/icons/gear-weapon-axe.png' },
+  { pattern: /劍|刃|刀/, src: 'assets/icons/gear-weapon-sword.png' }
+];
+
+const bossImageAssets = [
+  'assets/monsters/monster-1.png',
+  'assets/monsters/monster-2.png',
+  'assets/monsters/monster-3.png',
+  'assets/monsters/monster-4.png',
+  'assets/monsters/monster-5.png',
+  'assets/monsters/monster-6.png'
+];
+
+const avatarImageFor = (avatar) => avatarImageAssets[avatar] || avatarImageAssets['male-1'];
+
+const gearImageFor = (type, name = '') => {
+  const slotKey = typeToSlot[type] || type;
+
+  if (slotKey === 'weapon') {
+    const matchedWeapon = weaponImageAssets.find((item) => item.pattern.test(name));
+    return {
+      src: matchedWeapon?.src || gearImageAssets.weapon,
+      fallbackSrc: matchedWeapon?.src ? gearImageAssets.weapon : ''
+    };
+  }
+
+  return {
+    src: gearImageAssets[slotKey] || '',
+    fallbackSrc: ''
+  };
+};
+
+const hashText = (value = '') =>
+  String(value)
+    .split('')
+    .reduce((total, char) => total + char.charCodeAt(0), 0);
+
+const bossImageFor = (boss) => {
+  if (!bossImageAssets.length) {
+    return '';
+  }
+
+  const imageIndex = Math.abs(hashText(boss?.name || '') + Number(boss?.slot || 0)) % bossImageAssets.length;
+  return bossImageAssets[imageIndex];
+};
 
 const itemIcon = () => `
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -220,10 +302,17 @@ const slotIcon = (type, name = '') => {
     `
   };
 
-  return icons[slotKey] || itemIcon();
+  const imageAsset = gearImageFor(type, name);
+
+  return `
+    <span class="asset-icon gear-asset">
+      <span class="asset-fallback" aria-hidden="true">${icons[slotKey] || itemIcon()}</span>
+      ${assetImage(imageAsset.src, '', imageAsset.fallbackSrc)}
+    </span>
+  `;
 };
 
-const avatarIcon = (avatar = 'male-1') => {
+const avatarFallbackIcon = (avatar = 'male-1') => {
   const palette = {
     'male-1': ['#d5f0ff', '#ded7ff', '#d8b86f'],
     'male-2': ['#fff1d4', '#d5f0ff', '#b9adf2'],
@@ -260,6 +349,13 @@ const avatarIcon = (avatar = 'male-1') => {
     </svg>
   `;
 };
+
+const avatarIcon = (avatar = 'male-1') => `
+  <span class="asset-icon avatar-asset">
+    <span class="asset-fallback" aria-hidden="true">${avatarFallbackIcon(avatar)}</span>
+    ${assetImage(avatarImageFor(avatar))}
+  </span>
+`;
 
 const navSymbol = (view) =>
   ({
@@ -501,6 +597,7 @@ const clearSession = () => {
   state.incomingTrades = [];
   state.outgoingTrades = [];
   state.petCatalog = [];
+  state.avatarPickerOpen = false;
   localStorage.removeItem('ctqToken');
 };
 
@@ -573,7 +670,16 @@ const renderShell = () => {
     <section class="app-shell">
       <header class="topbar">
         <div class="profile-plaque">
-          <div class="profile-avatar">${avatarIcon(state.player.avatar || 'male-1')}</div>
+          <button
+            class="profile-avatar avatar-trigger"
+            type="button"
+            data-action="open-avatar-picker"
+            aria-label="選擇角色頭像"
+            aria-haspopup="dialog"
+            aria-expanded="${state.avatarPickerOpen ? 'true' : 'false'}"
+          >
+            ${avatarIcon(state.player.avatar || 'male-1')}
+          </button>
           <div class="player-chip">
             <span class="player-name">${escapeHtml(state.player.name)}</span>
             <span class="player-meta">${roleText(state.player.role)} · 戰力 ${formatNumber(totalPower(state.player))}</span>
@@ -602,6 +708,7 @@ const renderShell = () => {
       </nav>
       ${state.boxReveal ? renderBoxReveal() : ''}
       ${state.petQuiz ? renderPetQuiz() : ''}
+      ${state.avatarPickerOpen ? renderAvatarModal() : ''}
     </section>
   `;
   syncBossTimers();
@@ -615,7 +722,7 @@ const navButton = (view, label) => `
 `;
 
 const renderAvatarPicker = (selectedAvatar, { mode = 'auth' } = {}) => `
-  <div class="avatar-picker" aria-label="選擇角色徽章">
+  <div class="avatar-picker" aria-label="選擇角色頭像">
     ${avatarOptions
       .map(
         (avatar) => `
@@ -631,6 +738,21 @@ const renderAvatarPicker = (selectedAvatar, { mode = 'auth' } = {}) => `
         `
       )
       .join('')}
+  </div>
+`;
+
+const renderAvatarModal = () => `
+  <div class="modal-backdrop avatar-modal-backdrop" role="dialog" aria-modal="true" aria-label="選擇角色頭像">
+    <section class="avatar-modal card">
+      <div class="card-header">
+        <div>
+          <h3>選擇角色頭像</h3>
+          <p>點選左上角頭像可隨時更換代表圖示。</p>
+        </div>
+        <button class="icon-button" type="button" data-action="close-avatar-picker" aria-label="關閉">關閉</button>
+      </div>
+      ${renderAvatarPicker(state.player.avatar || 'male-1', { mode: 'profile' })}
+    </section>
   </div>
 `;
 
@@ -746,16 +868,6 @@ const renderShop = () => {
       <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
       <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.equipmentPower)}</strong></div>
       <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
-    </section>
-
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3>角色徽章</h3>
-          <p>選擇你的隊伍代表圖示。</p>
-        </div>
-      </div>
-      ${renderAvatarPicker(state.player.avatar || 'male-1', { mode: 'profile' })}
     </section>
 
     <section class="card">
@@ -1064,6 +1176,42 @@ const renderTradeCard = (trade, mode) => {
   `;
 };
 
+const renderEmergencyTaskControls = () => `
+  <div class="admin-subsection">
+    <strong>緊急任務</strong>
+    <label class="check-row">
+      <input name="emergencyTaskActive" type="checkbox" ${state.bossConfig?.emergencyTask?.active ? 'checked' : ''} />
+      <span>發布並顯示緊急任務</span>
+    </label>
+    <div class="field">
+      <label for="emergencyTaskTitle">任務名稱</label>
+      <input id="emergencyTaskTitle" name="emergencyTaskTitle" maxlength="60" value="${escapeAttr(state.bossConfig?.emergencyTask?.title || '緊急守護任務')}" />
+    </div>
+    <div class="field">
+      <label for="emergencyTaskDifficulty">任務難度</label>
+      <select id="emergencyTaskDifficulty" name="emergencyTaskDifficulty">
+        ${emergencyDifficultyOptions
+          .map(
+            (option) =>
+              `<option value="${option.value}" ${Number(state.bossConfig?.emergencyTask?.difficulty || 1) === option.value ? 'selected' : ''}>${option.label}</option>`
+          )
+          .join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label for="emergencyTaskReward">完成獎勵 Token（金幣）</label>
+      <input id="emergencyTaskReward" name="emergencyTaskReward" type="number" min="0" step="10" value="${Number(state.bossConfig?.emergencyTask?.reward || 500)}" />
+    </div>
+  </div>
+`;
+
+const emergencyTaskPayloadFromForm = (formData) => ({
+  active: formData.get('emergencyTaskActive') === 'on',
+  title: formData.get('emergencyTaskTitle'),
+  difficulty: formData.get('emergencyTaskDifficulty'),
+  reward: formData.get('emergencyTaskReward')
+});
+
 const renderHunt = () => {
   if (state.player.role !== 'teacher') {
     return `
@@ -1115,6 +1263,19 @@ const renderHunt = () => {
           <input id="customAmount" name="customAmount" type="number" min="1" step="1" placeholder="輸入自訂發放數量（可留空）" />
         </div>
         <button class="primary-button" type="submit" ${state.players.length ? '' : 'disabled'}>新增金幣</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>發布緊急任務</h3>
+          <p>導師可設定任務難度，團員會在挑戰頁看到目前任務。</p>
+        </div>
+      </div>
+      <form id="emergency-task-form" class="admin-controls">
+        ${renderEmergencyTaskControls()}
+        <button class="primary-button" type="submit">儲存緊急任務</button>
       </form>
     </section>
   `;
@@ -1241,6 +1402,36 @@ const renderNoticeBoard = () => {
   `;
 };
 
+const emergencyDifficultyLabel = (difficulty) => {
+  const normalized = Math.max(1, Math.min(5, Number(difficulty || 1)));
+  return emergencyDifficultyOptions.find((item) => item.value === normalized)?.label || emergencyDifficultyOptions[0].label;
+};
+
+const renderEmergencyTask = () => {
+  const task = state.bossConfig?.emergencyTask;
+
+  if (!task?.active) {
+    return '';
+  }
+
+  return `
+    <section class="card emergency-card">
+      <div class="card-header">
+        <div>
+          <h3>緊急任務</h3>
+          <p>導師已發布臨時任務，請優先協助守住星光戰線。</p>
+        </div>
+        <span class="price-pill">${escapeHtml(emergencyDifficultyLabel(task.difficulty))}</span>
+      </div>
+      <div class="emergency-task">
+        <strong>${escapeHtml(task.title || '緊急守護任務')}</strong>
+        <span>完成獎勵 ${formatNumber(task.reward || 0)} Token（金幣）</span>
+        ${task.issuedAt ? `<small>發布時間 ${new Date(task.issuedAt).toLocaleString('zh-Hant-HK')}</small>` : ''}
+      </div>
+    </section>
+  `;
+};
+
 const renderHuntBosses = () => {
   if (!state.bosses.length) {
     return `
@@ -1281,6 +1472,8 @@ const renderHuntBosses = () => {
       <p class="campaign-event">${escapeHtml(state.bossConfig?.lastCampaignEvent || '')}</p>
     </section>
 
+    ${renderEmergencyTask()}
+
     ${renderNoticeBoard()}
 
     ${
@@ -1306,6 +1499,7 @@ const renderHuntBosses = () => {
                 <input name="resetBosses" type="checkbox" />
                 <span>儲存後立即重置三隻 Boss</span>
               </label>
+              ${renderEmergencyTaskControls()}
               <button class="primary-button" type="submit">儲存挑戰設定</button>
             </form>
           </section>
@@ -1339,6 +1533,10 @@ const renderBossCard = (boss) => {
           <p data-boss-status="${escapeAttr(boss._id)}">${bossStatus}</p>
         </div>
         <span class="price-pill">參戰 ${formatNumber(boss.participantCount)}</span>
+      </div>
+      <div class="boss-portrait">
+        <div class="boss-portrait-fallback" aria-hidden="true">${crestIcon()}</div>
+        ${assetImage(bossImageFor(boss), boss.name)}
       </div>
       <div class="boss-health" aria-label="挑戰進度">
         <div class="boss-health-fill" data-boss-hp-bar="${escapeAttr(boss._id)}" style="width: ${bossHpPercent(boss)}%"></div>
@@ -1804,7 +2002,7 @@ const refreshViewData = async () => {
     await loadPetCatalog();
   }
 
-  if (state.view === 'boss') {
+  if (state.view === 'boss' || state.view === 'hunt') {
     await loadWorldBoss();
   }
 
@@ -1923,6 +2121,18 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'open-avatar-picker') {
+    state.avatarPickerOpen = true;
+    renderShell();
+    return;
+  }
+
+  if (action === 'close-avatar-picker') {
+    state.avatarPickerOpen = false;
+    renderShell();
+    return;
+  }
+
   if (action === 'buy-item') {
     const itemId = actionButton.dataset.itemId;
     await runAction(() =>
@@ -1962,6 +2172,7 @@ app.addEventListener('click', async (event) => {
   }
 
   if (action === 'update-avatar') {
+    state.avatarPickerOpen = false;
     await runAction(() =>
       api('/api/avatar', {
         method: 'POST',
@@ -2240,7 +2451,22 @@ app.addEventListener('submit', async (event) => {
         body: JSON.stringify({
           killCount: formData.get('killCount'),
           frontlineStep: formData.get('frontlineStep'),
-          resetBosses: formData.get('resetBosses') === 'on'
+          resetBosses: formData.get('resetBosses') === 'on',
+          emergencyTask: emergencyTaskPayloadFromForm(formData)
+        })
+      })
+    );
+    return;
+  }
+
+  if (event.target.id === 'emergency-task-form') {
+    const formData = new FormData(event.target);
+
+    await runAction(() =>
+      api('/api/worldBoss/config', {
+        method: 'POST',
+        body: JSON.stringify({
+          emergencyTask: emergencyTaskPayloadFromForm(formData)
         })
       })
     );

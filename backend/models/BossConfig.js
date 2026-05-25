@@ -62,6 +62,43 @@ const campaignEventSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const emergencyTaskSchema = new mongoose.Schema(
+  {
+    active: {
+      type: Boolean,
+      default: false
+    },
+    title: {
+      type: String,
+      default: '緊急守護任務',
+      trim: true,
+      maxlength: 60
+    },
+    difficulty: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 5
+    },
+    reward: {
+      type: Number,
+      default: 500,
+      min: 0
+    },
+    issuedAt: {
+      type: Date,
+      default: null
+    },
+    issuedBy: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 60
+    }
+  },
+  { _id: false }
+);
+
 const bossConfigSchema = new mongoose.Schema(
   {
     configKey: {
@@ -116,6 +153,10 @@ const bossConfigSchema = new mongoose.Schema(
     campaignEvents: {
       type: [campaignEventSchema],
       default: []
+    },
+    emergencyTask: {
+      type: emergencyTaskSchema,
+      default: () => ({})
     }
   },
   {
