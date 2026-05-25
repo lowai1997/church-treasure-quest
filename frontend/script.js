@@ -9,6 +9,10 @@ const state = {
   rank: [],
   players: [],
   worldBoss: null,
+  tradePlayers: [],
+  incomingTrades: [],
+  outgoingTrades: [],
+  inventorySort: localStorage.getItem('ctqInventorySort') || 'rarity-desc',
   addGoldAmount: 100,
   busy: false
 };
@@ -21,6 +25,35 @@ let bossPollTimer = null;
 const formatNumber = (value) => new Intl.NumberFormat('zh-Hant-TW').format(Number(value || 0));
 
 const totalPower = (player) => Number(player?.totalPower ?? 0);
+const rarityRank = { N: 1, R: 2, S: 3, SS: 4, SSS: 5 };
+
+const sortInventoryItems = (items = []) => {
+  return [...items].sort((left, right) => {
+    if (state.inventorySort === 'rarity-asc') {
+      return (
+        (rarityRank[left.rarity] || 0) - (rarityRank[right.rarity] || 0) ||
+        Number(left.power || 0) - Number(right.power || 0) ||
+        String(left.name).localeCompare(String(right.name), 'zh-Hant')
+      );
+    }
+
+    if (state.inventorySort === 'power-desc') {
+      return (
+        Number(right.power || 0) - Number(left.power || 0) ||
+        (rarityRank[right.rarity] || 0) - (rarityRank[left.rarity] || 0) ||
+        String(left.name).localeCompare(String(right.name), 'zh-Hant')
+      );
+    }
+
+    return (
+      (rarityRank[right.rarity] || 0) - (rarityRank[left.rarity] || 0) ||
+      Number(right.power || 0) - Number(left.power || 0) ||
+      String(left.name).localeCompare(String(right.name), 'zh-Hant')
+    );
+  });
+};
+
+const gearSellValue = (item) => Math.max(0, Math.floor(Number(item?.price || 0) * 0.5));
 
 const equipmentSlots = [
   { key: 'weapon', label: '武器', limit: 2 },
@@ -196,6 +229,9 @@ const clearSession = () => {
   state.rank = [];
   state.players = [];
   state.worldBoss = null;
+  state.tradePlayers = [];
+  state.incomingTrades = [];
+  state.outgoingTrades = [];
   localStorage.removeItem('ctqToken');
 };
 
@@ -430,6 +466,7 @@ const renderEquipment = () => {
   }
 
   const equippedIds = getEquippedIds();
+  const sortedItems = sortInventoryItems(state.player.items);
 
   return `
     <section class="view-title">
@@ -481,12 +518,25 @@ const renderEquipment = () => {
     </section>
 
     <section class="items-grid" aria-label="背包裝備">
+      <div class="card-header">
+        <div>
+          <h3>背包裝備</h3>
+          <p>可按稀有度或戰力排序，也可賣出不需要的裝備。</p>
+        </div>
+        <select class="compact-select" aria-label="背包排序" data-inventory-sort>
+          <option value="rarity-desc" ${state.inventorySort === 'rarity-desc' ? 'selected' : ''}>稀有度 高至低</option>
+          <option value="rarity-asc" ${state.inventorySort === 'rarity-asc' ? 'selected' : ''}>稀有度 低至高</option>
+          <option value="power-desc" ${state.inventorySort === 'power-desc' ? 'selected' : ''}>戰力 高至低</option>
+        </select>
+      </div>
       ${
-        state.player.items.length
-          ? state.player.items.map((item) => renderInventoryItem(item, equippedIds)).join('')
+        sortedItems.length
+          ? sortedItems.map((item) => renderInventoryItem(item, equippedIds)).join('')
           : '<div class="empty-card">背包尚無裝備，可到商店購買或開神秘盒。</div>'
       }
     </section>
+
+    ${renderTradePanel(sortedItems)}
   `;
 };
 
@@ -504,11 +554,140 @@ const renderInventoryItem = (item, equippedIds) => {
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>${escapeHtml(item.type)}</span>
           <span>戰力 +${formatNumber(item.power)}</span>
+          <span>賣出 ${formatNumber(gearSellValue(item))}</span>
         </div>
+        <div class="item-actions">
+          ${
+            equipped
+              ? `<button class="mini-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
+              : `<button class="mini-button" type="button" data-action="equip-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '穿戴'}</button>`
+          }
+          <button class="mini-button danger-mini" type="button" data-action="sell-item" data-inventory-id="${escapeAttr(item.inventoryId)}" data-item-name="${escapeAttr(item.name)}" data-sell-value="${gearSellValue(item)}">賣出</button>
+        </div>
+      </div>
+    </article>
+  `;
+};
+
+const renderTradePanel = (myItems) => {
+  const tradeTargets = state.tradePlayers.flatMap((player) =>
+    sortInventoryItems(player.items || []).map((item) => ({
+      player,
+      item
+    }))
+  );
+  const canCreateTrade = myItems.length > 0 && tradeTargets.length > 0;
+
+  return `
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>裝備交換</h3>
+          <p>送出交換申請後，需要對方接受才會互換裝備。</p>
+        </div>
+      </div>
+      ${
+        canCreateTrade
+          ? `
+            <form id="trade-form" class="trade-form">
+              <div class="field">
+                <label for="offeredInventoryId">我拿出</label>
+                <select id="offeredInventoryId" name="offeredInventoryId" required>
+                  ${myItems
+                    .map(
+                      (item) => `
+                        <option value="${escapeAttr(item.inventoryId)}">${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} · +${formatNumber(item.power)}</option>
+                      `
+                    )
+                    .join('')}
+                </select>
+              </div>
+              <div class="field">
+                <label for="requestedTradeTarget">想換到</label>
+                <select id="requestedTradeTarget" name="requestedTradeTarget" required>
+                  ${state.tradePlayers
+                    .map((player) => {
+                      const items = sortInventoryItems(player.items || []);
+                      return items.length
+                        ? `
+                          <optgroup label="${escapeAttr(player.name)}">
+                            ${items
+                              .map(
+                                (item) => `
+                                  <option value="${escapeAttr(`${player._id}|${item.inventoryId}`)}">${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} · +${formatNumber(item.power)}</option>
+                                `
+                              )
+                              .join('')}
+                          </optgroup>
+                        `
+                        : '';
+                    })
+                    .join('')}
+                </select>
+              </div>
+              <button class="primary-button" type="submit">送出交換申請</button>
+            </form>
+          `
+          : '<div class="empty-card">需要你和其他團員都擁有裝備，才可以送出交換申請。</div>'
+      }
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>收到的交換申請</h3>
+          <p>${state.incomingTrades.length ? `共有 ${state.incomingTrades.length} 個待回覆申請。` : '目前沒有待回覆申請。'}</p>
+        </div>
+      </div>
+      <div class="trade-list">
         ${
-          equipped
-            ? `<button class="mini-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
-            : `<button class="mini-button" type="button" data-action="equip-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '穿戴'}</button>`
+          state.incomingTrades.length
+            ? state.incomingTrades.map((trade) => renderTradeCard(trade, 'incoming')).join('')
+            : '<div class="empty-card">暫時沒有收到交換申請。</div>'
+        }
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>送出的交換申請</h3>
+          <p>${state.outgoingTrades.length ? `共有 ${state.outgoingTrades.length} 個等待對方回覆。` : '目前沒有等待中的申請。'}</p>
+        </div>
+      </div>
+      <div class="trade-list">
+        ${
+          state.outgoingTrades.length
+            ? state.outgoingTrades.map((trade) => renderTradeCard(trade, 'outgoing')).join('')
+            : '<div class="empty-card">尚未送出交換申請。</div>'
+        }
+      </div>
+    </section>
+  `;
+};
+
+const renderTradeCard = (trade, mode) => {
+  const otherName = mode === 'incoming' ? trade.fromPlayer?.name : trade.toPlayer?.name;
+
+  return `
+    <article class="trade-card">
+      <div>
+        <strong>${escapeHtml(otherName || '團員')}</strong>
+        <span>${mode === 'incoming' ? '想和你交換裝備' : '等待對方回覆'}</span>
+      </div>
+      <div class="trade-swap">
+        <span>${escapeHtml(trade.offeredItem?.rarity || 'N')} ${escapeHtml(trade.offeredItem?.name)} +${formatNumber(trade.offeredItem?.power)}</span>
+        <span>⇄</span>
+        <span>${escapeHtml(trade.requestedItem?.rarity || 'N')} ${escapeHtml(trade.requestedItem?.name)} +${formatNumber(trade.requestedItem?.power)}</span>
+      </div>
+      <div class="trade-actions">
+        ${
+          mode === 'incoming'
+            ? `
+              <button class="mini-button" type="button" data-action="accept-trade" data-trade-id="${escapeAttr(trade._id)}">接受</button>
+              <button class="mini-button danger-mini" type="button" data-action="decline-trade" data-trade-id="${escapeAttr(trade._id)}">拒絕</button>
+            `
+            : `<button class="mini-button danger-mini" type="button" data-action="cancel-trade" data-trade-id="${escapeAttr(trade._id)}">取消</button>`
         }
       </div>
     </article>
@@ -853,6 +1032,20 @@ const loadWorldBoss = async () => {
   state.worldBoss = data.boss;
 };
 
+const loadTradeData = async () => {
+  if (state.player?.role !== 'student') {
+    state.tradePlayers = [];
+    state.incomingTrades = [];
+    state.outgoingTrades = [];
+    return;
+  }
+
+  const [playersData, tradesData] = await Promise.all([api('/api/tradePlayers'), api('/api/trades')]);
+  state.tradePlayers = playersData.players || [];
+  state.incomingTrades = tradesData.incoming || [];
+  state.outgoingTrades = tradesData.outgoing || [];
+};
+
 const refreshViewData = async () => {
   if (!state.token) {
     renderAuth();
@@ -871,6 +1064,10 @@ const refreshViewData = async () => {
 
   if (state.view === 'hunt' || state.view === 'players') {
     await loadPlayers();
+  }
+
+  if (state.view === 'equipment') {
+    await loadTradeData();
   }
 
   if (state.view === 'boss') {
@@ -905,6 +1102,18 @@ const runAction = async (action, successMessage) => {
     state.busy = false;
   }
 };
+
+app.addEventListener('change', (event) => {
+  const sortSelect = event.target.closest('[data-inventory-sort]');
+
+  if (!sortSelect) {
+    return;
+  }
+
+  state.inventorySort = sortSelect.value;
+  localStorage.setItem('ctqInventorySort', state.inventorySort);
+  renderShell();
+});
 
 app.addEventListener('click', async (event) => {
   const field = event.target.closest('.field');
@@ -989,6 +1198,24 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'sell-item') {
+    const inventoryId = actionButton.dataset.inventoryId;
+    const itemName = actionButton.dataset.itemName;
+    const sellValue = actionButton.dataset.sellValue;
+
+    if (!window.confirm(`確定要賣出「${itemName}」並獲得 ${sellValue} 金幣嗎？`)) {
+      return;
+    }
+
+    await runAction(() =>
+      api('/api/sellItem', {
+        method: 'POST',
+        body: JSON.stringify({ inventoryId })
+      })
+    );
+    return;
+  }
+
   if (action === 'join-boss') {
     await runAction(() =>
       api('/api/worldBoss/join', {
@@ -1006,6 +1233,23 @@ app.addEventListener('click', async (event) => {
 
     await runAction(() =>
       api('/api/worldBoss/reset', {
+        method: 'POST',
+        body: JSON.stringify({})
+      })
+    );
+    return;
+  }
+
+  if (action === 'accept-trade' || action === 'decline-trade' || action === 'cancel-trade') {
+    const tradeId = actionButton.dataset.tradeId;
+    const endpointByAction = {
+      'accept-trade': 'accept',
+      'decline-trade': 'decline',
+      'cancel-trade': 'cancel'
+    };
+
+    await runAction(() =>
+      api(`/api/trades/${tradeId}/${endpointByAction[action]}`, {
         method: 'POST',
         body: JSON.stringify({})
       })
@@ -1097,6 +1341,23 @@ app.addEventListener('submit', async (event) => {
       setSession(data);
       return { message: `${roleText(data.player.role)} ${data.player.name}，歡迎回來。` };
     });
+    return;
+  }
+
+  if (event.target.id === 'trade-form') {
+    const formData = new FormData(event.target);
+    const [toPlayerId, requestedInventoryId] = String(formData.get('requestedTradeTarget') || '').split('|');
+
+    await runAction(() =>
+      api('/api/trades', {
+        method: 'POST',
+        body: JSON.stringify({
+          offeredInventoryId: formData.get('offeredInventoryId'),
+          toPlayerId,
+          requestedInventoryId
+        })
+      })
+    );
     return;
   }
 

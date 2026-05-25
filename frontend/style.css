@@ -474,10 +474,32 @@ h1 {
   font-weight: 900;
 }
 
+.danger-mini {
+  background: var(--danger);
+}
+
 .mini-button:disabled,
 .primary-button:disabled {
   cursor: not-allowed;
   opacity: 0.52;
+}
+
+.compact-select {
+  min-height: 42px;
+  min-width: 132px;
+  padding: 0 10px;
+  color: var(--blue-800);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .inventory-list {
@@ -565,6 +587,54 @@ h1 {
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.trade-form {
+  display: grid;
+  gap: 8px;
+}
+
+.trade-list {
+  display: grid;
+  gap: 9px;
+}
+
+.trade-card {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.trade-card strong {
+  display: block;
+  color: var(--blue-950);
+}
+
+.trade-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.trade-swap {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.trade-swap span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trade-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .boss-card {
