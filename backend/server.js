@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import bossRoutes from './routes/bossRoutes.js';
 import playerRoutes from './routes/playerRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { seedDefaultItems } from './utils/seedItems.js';
@@ -58,6 +59,7 @@ app.use('/api', (req, res, next) => {
 app.use('/api', authRoutes);
 app.use('/api', playerRoutes);
 app.use('/api', adminRoutes);
+app.use('/api', bossRoutes);
 app.use('/api', notFound);
 
 app.get('*', (req, res) => {

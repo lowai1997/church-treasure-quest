@@ -22,11 +22,9 @@ router.post('/register', async (req, res, next) => {
       return res.status(400).json({ message: '密碼至少需要 6 個字元。' });
     }
 
-    if (
-      normalizedRole === 'teacher' &&
-      process.env.TEACHER_REGISTER_KEY &&
-      teacherKey !== process.env.TEACHER_REGISTER_KEY
-    ) {
+    const expectedTeacherKey = process.env.TEACHER_REGISTER_KEY || 'Amen2026';
+
+    if (normalizedRole === 'teacher' && teacherKey !== expectedTeacherKey) {
       return res.status(403).json({ message: '導師註冊金鑰不正確。' });
     }
 

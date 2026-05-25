@@ -21,9 +21,15 @@ const validateGoldAmount = (value, fieldName = '金幣') => {
 
 router.get('/players', verifyToken, requireRole('teacher'), async (req, res, next) => {
   try {
-    const players = await Player.find({ role: 'student' })
-      .select('-password -__v')
-      .sort({ name: 1 });
+    const players = await Player.find({ role: 'student' }).sort({ name: 1 });
+
+    await Promise.all(
+      players.map(async (player) => {
+        player.ensureInventoryIds();
+        player.recalculatePower();
+        await player.save();
+      })
+    );
 
     return res.json({
       players: players.map((player) => player.toSafeObject())
@@ -35,12 +41,7 @@ router.get('/players', verifyToken, requireRole('teacher'), async (req, res, nex
 
 router.post('/addGold', verifyToken, requireRole('teacher'), async (req, res, next) => {
   try {
-    const { playerId, name, amount, eventPassword } = req.body;
-    const expectedEventCode = process.env.TREASURE_EVENT_CODE || 'amen2026';
-
-    if (eventPassword !== expectedEventCode) {
-      return res.status(403).json({ message: '活動密碼不正確。' });
-    }
+    const { playerId, name, amount } = req.body;
 
     const result = validateGoldAmount(amount, '新增金幣');
 

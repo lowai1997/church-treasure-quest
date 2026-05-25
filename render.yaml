@@ -14,7 +14,11 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
-      - key: TREASURE_EVENT_CODE
-        sync: false
       - key: BOX_PRICE
         value: 50
+      - key: TEACHER_REGISTER_KEY
+        value: Amen2026
+      - key: WORLD_BOSS_MAX_HP
+        value: 2000000
+      - key: WORLD_BOSS_SETTLE_SECONDS
+        value: 10

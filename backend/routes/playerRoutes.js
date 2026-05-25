@@ -16,6 +16,24 @@ const slotConfig = {
   accessory: { label: '裝飾品', limit: 2 }
 };
 
+const getTargetPlayer = async (req) => {
+  if (req.user.role === 'teacher') {
+    const playerId = req.body.playerId;
+
+    if (!playerId) {
+      return null;
+    }
+
+    return Player.findOne({ _id: playerId, role: 'student' });
+  }
+
+  if (req.user.role === 'student') {
+    return Player.findById(req.user._id);
+  }
+
+  return null;
+};
+
 const typeToSlot = {
   武器: 'weapon',
   頭盔: 'helmet',
@@ -168,10 +186,15 @@ router.post('/openBox', verifyToken, requireRole('student'), async (req, res, ne
   }
 });
 
-router.post('/equipItem', verifyToken, requireRole('student'), async (req, res, next) => {
+router.post('/equipItem', verifyToken, async (req, res, next) => {
   try {
     const { inventoryId } = req.body;
-    const player = await Player.findById(req.user._id);
+    const player = await getTargetPlayer(req);
+
+    if (!player) {
+      return res.status(404).json({ message: '找不到此團員玩家。' });
+    }
+
     await ensurePlayerEquipment(player);
 
     const inventoryItem = player.items.find((item) => item.inventoryId === inventoryId);
@@ -200,19 +223,26 @@ router.post('/equipItem', verifyToken, requireRole('student'), async (req, res, 
     player.recalculatePower();
     await player.save();
 
+    const responsePlayerKey = req.user.role === 'teacher' ? 'managedPlayer' : 'player';
+
     return res.json({
       message: `已穿戴 ${inventoryItem.name}。`,
-      player: player.toSafeObject()
+      [responsePlayerKey]: player.toSafeObject()
     });
   } catch (error) {
     return next(error);
   }
 });
 
-router.post('/unequipItem', verifyToken, requireRole('student'), async (req, res, next) => {
+router.post('/unequipItem', verifyToken, async (req, res, next) => {
   try {
     const { inventoryId } = req.body;
-    const player = await Player.findById(req.user._id);
+    const player = await getTargetPlayer(req);
+
+    if (!player) {
+      return res.status(404).json({ message: '找不到此團員玩家。' });
+    }
+
     await ensurePlayerEquipment(player);
 
     const inventoryItem = player.items.find((item) => item.inventoryId === inventoryId);
@@ -227,9 +257,11 @@ router.post('/unequipItem', verifyToken, requireRole('student'), async (req, res
     player.recalculatePower();
     await player.save();
 
+    const responsePlayerKey = req.user.role === 'teacher' ? 'managedPlayer' : 'player';
+
     return res.json({
       message: `已卸下 ${inventoryItem.name}。`,
-      player: player.toSafeObject()
+      [responsePlayerKey]: player.toSafeObject()
     });
   } catch (error) {
     return next(error);
@@ -242,7 +274,7 @@ router.get('/getRank', verifyToken, async (req, res, next) => {
       { $match: { role: 'student' } },
       {
         $addFields: {
-          totalPower: { $add: ['$gold', '$power'] },
+          totalPower: '$power',
           itemCount: { $size: '$items' }
         }
       },

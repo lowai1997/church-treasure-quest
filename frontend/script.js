@@ -8,12 +8,15 @@ const state = {
   storeDate: '',
   rank: [],
   players: [],
+  worldBoss: null,
   addGoldAmount: 100,
   busy: false
 };
 
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
+let bossVisualTimer = null;
+let bossPollTimer = null;
 
 const formatNumber = (value) => new Intl.NumberFormat('zh-Hant-TW').format(Number(value || 0));
 
@@ -80,6 +83,82 @@ const showToast = (message, type = 'success') => {
   }, 2800);
 };
 
+const getLiveBossHp = (boss = state.worldBoss) => {
+  if (!boss) {
+    return 0;
+  }
+
+  const calculatedAt = Date.parse(boss.calculatedAt || '');
+  const elapsedSeconds =
+    boss.defeatedAt || !Number.isFinite(calculatedAt)
+      ? 0
+      : Math.max(0, Math.floor((Date.now() - calculatedAt) / 1000));
+
+  return Math.max(0, Number(boss.hp || 0) - elapsedSeconds * Number(boss.totalPower || 0));
+};
+
+const bossHpPercent = (boss = state.worldBoss) => {
+  if (!boss || !Number(boss.maxHp)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, (getLiveBossHp(boss) / Number(boss.maxHp)) * 100));
+};
+
+const updateBossLiveHp = () => {
+  if (!state.worldBoss || state.view !== 'boss') {
+    return;
+  }
+
+  const hp = getLiveBossHp();
+  const hpTexts = document.querySelectorAll('[data-boss-hp]');
+  const hpBar = document.querySelector('[data-boss-hp-bar]');
+  const statusText = document.querySelector('[data-boss-status]');
+
+  hpTexts.forEach((hpText) => {
+    hpText.textContent = formatNumber(hp);
+  });
+
+  if (hpBar) {
+    hpBar.style.width = `${bossHpPercent()}%`;
+  }
+
+  if (statusText && hp <= 0) {
+    statusText.textContent = '已擊敗';
+  }
+};
+
+const stopBossTimers = () => {
+  window.clearInterval(bossVisualTimer);
+  window.clearInterval(bossPollTimer);
+  bossVisualTimer = null;
+  bossPollTimer = null;
+};
+
+const syncBossTimers = () => {
+  stopBossTimers();
+
+  if (state.view !== 'boss' || !state.worldBoss || !state.token) {
+    return;
+  }
+
+  updateBossLiveHp();
+  bossVisualTimer = window.setInterval(updateBossLiveHp, 1000);
+  bossPollTimer = window.setInterval(async () => {
+    if (state.view !== 'boss' || !state.token) {
+      stopBossTimers();
+      return;
+    }
+
+    try {
+      await loadWorldBoss();
+      renderShell();
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
+  }, Math.max(5, Number(state.worldBoss.settleEverySeconds || 10)) * 1000);
+};
+
 const api = async (path, options = {}) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -116,12 +195,14 @@ const clearSession = () => {
   state.items = [];
   state.rank = [];
   state.players = [];
+  state.worldBoss = null;
   localStorage.removeItem('ctqToken');
 };
 
 const roleText = (role) => (role === 'teacher' ? '導師' : '團員');
 
 const renderAuth = () => {
+  stopBossTimers();
   setBodyView('login');
   app.innerHTML = `
     <section class="auth-screen">
@@ -157,7 +238,7 @@ const renderAuth = () => {
                   </div>
                   <div class="field ${state.authRole === 'teacher' ? '' : 'is-hidden'}">
                     <label for="teacherKey">導師註冊金鑰</label>
-                    <input id="teacherKey" name="teacherKey" placeholder="若伺服器有設定才需填寫" />
+                    <input id="teacherKey" name="teacherKey" placeholder="請輸入 Amen2026" />
                   </div>
                 `
                 : ''
@@ -173,6 +254,7 @@ const renderAuth = () => {
 };
 
 const renderLoading = () => {
+  stopBossTimers();
   app.innerHTML = '<div class="loading">載入教會尋寶王...</div>';
 };
 
@@ -198,10 +280,12 @@ const renderShell = () => {
         ${navButton('shop', '🛒商店')}
         ${state.player.role === 'student' ? navButton('equipment', '🛡️裝備') : ''}
         ${state.player.role === 'teacher' ? navButton('players', '👥名單') : ''}
+        ${navButton('boss', '🌍世界怪獸')}
         ${navButton('rank', '🏆排行榜')}
       </nav>
     </section>
   `;
+  syncBossTimers();
 };
 
 const navButton = (view, label) => `
@@ -223,6 +307,10 @@ const renderCurrentView = () => {
 
   if (state.view === 'equipment') {
     return renderEquipment();
+  }
+
+  if (state.view === 'boss') {
+    return renderWorldBoss();
   }
 
   return renderShop();
@@ -248,7 +336,7 @@ const renderShop = () => {
     <section class="stats-grid" aria-label="玩家狀態">
       <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
       <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.power)}</strong></div>
-      <div class="stat-card"><span>總戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
+      <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
     </section>
 
     <section class="card">
@@ -318,14 +406,16 @@ const renderItemCard = (item) => {
 
 const getEquippedIds = () => new Set(Object.values(state.player?.equipped || {}).flat());
 
-const getSlotItems = (slotKey) => {
-  const equippedIds = new Set(state.player?.equipped?.[slotKey] || []);
-  return (state.player?.items || []).filter((item) => equippedIds.has(item.inventoryId));
+const getEquippedIdsFor = (player) => new Set(Object.values(player?.equipped || {}).flat());
+
+const getSlotItems = (slotKey, player = state.player) => {
+  const equippedIds = new Set(player?.equipped?.[slotKey] || []);
+  return (player?.items || []).filter((item) => equippedIds.has(item.inventoryId));
 };
 
-const isSlotFull = (slotKey) => {
+const isSlotFull = (slotKey, player = state.player) => {
   const slot = equipmentSlots.find((item) => item.key === slotKey);
-  return Number(state.player?.equipped?.[slotKey]?.length || 0) >= Number(slot?.limit || 0);
+  return Number(player?.equipped?.[slotKey]?.length || 0) >= Number(slot?.limit || 0);
 };
 
 const renderEquipment = () => {
@@ -350,7 +440,7 @@ const renderEquipment = () => {
     <section class="stats-grid" aria-label="裝備狀態">
       <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.power)}</strong></div>
       <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
-      <div class="stat-card"><span>總戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
+      <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
     </section>
 
     <section class="card">
@@ -430,7 +520,7 @@ const renderHunt = () => {
     return `
       <section class="view-title">
         <h2>尋寶管理</h2>
-        <p>此頁面由導師用來輸入活動密碼並發放金幣。</p>
+        <p>此頁面由導師用來選擇團員並發放金幣。</p>
       </section>
       <div class="empty-card">團員請前往商店購買裝備，或查看排行榜。</div>
     `;
@@ -439,15 +529,11 @@ const renderHunt = () => {
   return `
     <section class="view-title">
       <h2>尋寶管理</h2>
-      <p>輸入活動密碼後，為完成任務的團員新增金幣。</p>
+      <p>選擇團員後，可直接發放固定或自訂金幣。</p>
     </section>
 
     <section class="card">
       <form id="quick-add-form" class="admin-controls">
-        <div class="field">
-          <label for="eventPassword">活動密碼</label>
-          <input id="eventPassword" name="eventPassword" type="password" placeholder="請輸入本次活動密碼" required />
-        </div>
         <div class="field">
           <label for="studentName">團員名稱</label>
           <select id="studentName" name="playerId" required ${state.players.length ? '' : 'disabled'}>
@@ -475,8 +561,96 @@ const renderHunt = () => {
           </div>
           <input type="hidden" name="amount" value="${state.addGoldAmount}" />
         </div>
+        <div class="field">
+          <label for="customAmount">自訂 Token（金幣）</label>
+          <input id="customAmount" name="customAmount" type="number" min="1" step="1" placeholder="輸入自訂發放數量（可留空）" />
+        </div>
         <button class="primary-button" type="submit" ${state.players.length ? '' : 'disabled'}>新增金幣</button>
       </form>
+    </section>
+  `;
+};
+
+const renderWorldBoss = () => {
+  const boss = state.worldBoss;
+
+  if (!boss) {
+    return `
+      <section class="view-title">
+        <h2>世界怪獸</h2>
+        <p>正在載入共同 Boss 戰鬥狀態...</p>
+      </section>
+      <div class="empty-card">請稍候。</div>
+    `;
+  }
+
+  const hp = getLiveBossHp(boss);
+  const defeated = hp <= 0 || Boolean(boss.defeatedAt);
+  const bossStatus = defeated
+    ? '已擊敗'
+    : Number(boss.totalPower || 0) > 0
+      ? `每秒 -${formatNumber(boss.totalPower)}`
+      : '等待團員加入';
+
+  return `
+    <section class="view-title">
+      <h2>世界怪獸</h2>
+      <p>所有已加入團員的最新戰力會合計為每秒傷害，伺服器每 ${formatNumber(boss.settleEverySeconds || 10)} 秒批次結算一次。</p>
+    </section>
+
+    <section class="stats-grid" aria-label="世界怪獸狀態">
+      <div class="stat-card"><span>Boss 血量</span><strong><span data-boss-hp>${formatNumber(hp)}</span></strong></div>
+      <div class="stat-card"><span>合計戰力</span><strong>${formatNumber(boss.totalPower)}</strong></div>
+      <div class="stat-card"><span>參戰團員</span><strong>${formatNumber(boss.participantCount)}</strong></div>
+    </section>
+
+    <section class="card boss-card">
+      <div class="card-header">
+        <div>
+          <h3>${escapeHtml(boss.name)}</h3>
+          <p data-boss-status>${bossStatus}</p>
+        </div>
+        <span class="price-pill">${formatNumber(boss.maxHp)} HP</span>
+      </div>
+      <div class="boss-health" aria-label="世界怪獸血量">
+        <div class="boss-health-fill" data-boss-hp-bar style="width: ${bossHpPercent(boss)}%"></div>
+      </div>
+      <div class="boss-health-row">
+        <strong><span data-boss-hp>${formatNumber(hp)}</span> / ${formatNumber(boss.maxHp)}</strong>
+        <span>${defeated ? '請等待導師重置' : `每秒扣血 ${formatNumber(boss.totalPower)}`}</span>
+      </div>
+      <div class="boss-actions">
+        ${
+          state.player.role === 'student'
+            ? `<button class="primary-button" type="button" data-action="join-boss" ${boss.joined || defeated ? 'disabled' : ''}>${boss.joined ? '已加入戰鬥' : defeated ? 'Boss 已被擊敗' : '加入戰鬥'}</button>`
+            : `<button class="danger-button" type="button" data-action="reset-boss">重置世界怪獸</button>`
+        }
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>參戰名單</h3>
+          <p>${state.player.role === 'student' ? `你的目前戰力：${formatNumber(totalPower(state.player))}` : '導師可查看目前參戰團員與戰力。'}</p>
+        </div>
+      </div>
+      <div class="participant-list">
+        ${
+          boss.participants.length
+            ? boss.participants
+                .map(
+                  (player) => `
+                    <div class="participant-row">
+                      <strong>${escapeHtml(player.name)}</strong>
+                      <span>戰力 ${formatNumber(player.totalPower)}</span>
+                    </div>
+                  `
+                )
+                .join('')
+            : '<div class="empty-card">尚未有團員加入世界怪獸戰鬥。</div>'
+        }
+      </div>
     </section>
   `;
 };
@@ -530,8 +704,71 @@ const renderAdminRow = (player) => `
       <button class="mini-button" type="button" data-action="update-gold" data-player-id="${escapeAttr(player._id)}">儲存</button>
       <button class="danger-button" type="button" data-action="remove-player" data-player-id="${escapeAttr(player._id)}" data-player-name="${escapeAttr(player.name)}">刪除玩家</button>
     </div>
+    ${renderManagedGear(player)}
   </article>
 `;
+
+const renderManagedGear = (player) => {
+  const equippedIds = getEquippedIdsFor(player);
+
+  return `
+    <div class="managed-gear">
+      <h4>裝備調整</h4>
+      <div class="equipment-slots compact">
+        ${equipmentSlots
+          .map((slot) => {
+            const slotItems = getSlotItems(slot.key, player);
+            return `
+              <div class="equipment-slot">
+                <strong>${slot.label} ${slotItems.length}/${slot.limit}</strong>
+                <div class="inventory-list">
+                  ${
+                    slotItems.length
+                      ? slotItems
+                          .map(
+                            (item) => `
+                              <span class="inventory-tag">
+                                ${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} +${formatNumber(item.power)}
+                                <button class="tag-button" type="button" data-action="unequip-item" data-player-id="${escapeAttr(player._id)}" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>
+                              </span>
+                            `
+                          )
+                          .join('')
+                      : '<span class="inventory-tag">空</span>'
+                  }
+                </div>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+      <div class="managed-inventory">
+        ${
+          player.items?.length
+            ? player.items.map((item) => renderManagedInventoryItem(player, item, equippedIds)).join('')
+            : '<div class="empty-card">此團員背包尚無裝備。</div>'
+        }
+      </div>
+    </div>
+  `;
+};
+
+const renderManagedInventoryItem = (player, item, equippedIds) => {
+  const slotKey = typeToSlot[item.type];
+  const equipped = equippedIds.has(item.inventoryId);
+  const full = slotKey ? isSlotFull(slotKey, player) : true;
+
+  return `
+    <div class="managed-item">
+      <span>${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} · ${escapeHtml(item.type)} · +${formatNumber(item.power)}</span>
+      ${
+        equipped
+          ? `<button class="mini-button" type="button" data-action="unequip-item" data-player-id="${escapeAttr(player._id)}" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
+          : `<button class="mini-button" type="button" data-action="equip-item" data-player-id="${escapeAttr(player._id)}" data-inventory-id="${escapeAttr(item.inventoryId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '穿戴'}</button>`
+      }
+    </div>
+  `;
+};
 
 const renderRank = () => {
   const topThree = state.rank.slice(0, 3);
@@ -539,7 +776,7 @@ const renderRank = () => {
   return `
     <section class="view-title">
       <h2>信心排行</h2>
-      <p>依照總戰力排序，總戰力 = 裝備加成 + 金幣。</p>
+      <p>依照裝備戰力排序，金幣不會計入戰力。</p>
     </section>
 
     ${
@@ -611,6 +848,11 @@ const loadPlayers = async () => {
   state.players = data.players;
 };
 
+const loadWorldBoss = async () => {
+  const data = await api('/api/worldBoss/status');
+  state.worldBoss = data.boss;
+};
+
 const refreshViewData = async () => {
   if (!state.token) {
     renderAuth();
@@ -631,6 +873,10 @@ const refreshViewData = async () => {
     await loadPlayers();
   }
 
+  if (state.view === 'boss') {
+    await loadWorldBoss();
+  }
+
   renderShell();
 };
 
@@ -645,6 +891,10 @@ const runAction = async (action, successMessage) => {
 
     if (result?.player) {
       state.player = result.player;
+    }
+
+    if (result?.boss) {
+      state.worldBoss = result.boss;
     }
 
     showToast(result?.message || successMessage || '操作完成。');
@@ -739,12 +989,37 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'join-boss') {
+    await runAction(() =>
+      api('/api/worldBoss/join', {
+        method: 'POST',
+        body: JSON.stringify({})
+      })
+    );
+    return;
+  }
+
+  if (action === 'reset-boss') {
+    if (!window.confirm('確定要重置世界怪獸戰鬥嗎？目前參戰名單與血量會重新開始。')) {
+      return;
+    }
+
+    await runAction(() =>
+      api('/api/worldBoss/reset', {
+        method: 'POST',
+        body: JSON.stringify({})
+      })
+    );
+    return;
+  }
+
   if (action === 'equip-item') {
     const inventoryId = actionButton.dataset.inventoryId;
+    const playerId = actionButton.dataset.playerId;
     await runAction(() =>
       api('/api/equipItem', {
         method: 'POST',
-        body: JSON.stringify({ inventoryId })
+        body: JSON.stringify({ inventoryId, playerId })
       })
     );
     return;
@@ -752,10 +1027,11 @@ app.addEventListener('click', async (event) => {
 
   if (action === 'unequip-item') {
     const inventoryId = actionButton.dataset.inventoryId;
+    const playerId = actionButton.dataset.playerId;
     await runAction(() =>
       api('/api/unequipItem', {
         method: 'POST',
-        body: JSON.stringify({ inventoryId })
+        body: JSON.stringify({ inventoryId, playerId })
       })
     );
     return;
@@ -776,19 +1052,6 @@ app.addEventListener('click', async (event) => {
       api('/api/updateGold', {
         method: 'POST',
         body: JSON.stringify({ playerId, gold })
-      })
-    );
-    return;
-  }
-
-  if (action === 'add-gold-row') {
-    const playerId = actionButton.dataset.playerId;
-    const amount = document.querySelector(`[data-add-input="${playerId}"]`)?.value;
-    const eventPassword = document.querySelector('#eventPassword')?.value;
-    await runAction(() =>
-      api('/api/addGold', {
-        method: 'POST',
-        body: JSON.stringify({ playerId, amount, eventPassword })
       })
     );
     return;
@@ -839,14 +1102,16 @@ app.addEventListener('submit', async (event) => {
 
   if (event.target.id === 'quick-add-form') {
     const formData = new FormData(event.target);
+    const customAmount = Number(formData.get('customAmount'));
+    const amount = Number.isFinite(customAmount) && customAmount > 0 ? customAmount : formData.get('amount');
+
     await runAction(() =>
       api('/api/addGold', {
         method: 'POST',
         body: JSON.stringify({
           name: formData.get('name'),
           playerId: formData.get('playerId'),
-          amount: formData.get('amount'),
-          eventPassword: formData.get('eventPassword')
+          amount
         })
       })
     );

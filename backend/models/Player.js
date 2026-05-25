@@ -153,7 +153,7 @@ playerSchema.methods.recalculatePower = function recalculatePower() {
 playerSchema.methods.toSafeObject = function toSafeObject() {
   const player = this.toObject({ versionKey: false });
   delete player.password;
-  player.totalPower = Number(player.power || 0) + Number(player.gold || 0);
+  player.totalPower = Number(player.power || 0);
   return player;
 };
 
