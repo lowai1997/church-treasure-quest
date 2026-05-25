@@ -15,7 +15,7 @@ const gearSellValues = {
   SSS: 500
 };
 const upgradeCost = 50;
-const maxUpgradeLevel = 3;
+const maxUpgradeLevel = 9;
 const upgradePowerGain = 10;
 const feedPetCost = 50;
 const petPowerGain = 10;
@@ -405,7 +405,7 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
     }
 
     if (Number(inventoryItem.upgradeLevel || 0) >= maxUpgradeLevel) {
-      return res.status(400).json({ message: '此武器已達 +3 上限。' });
+      return res.status(400).json({ message: `此武器已達 +${maxUpgradeLevel} 上限。` });
     }
 
     if (player.gold < upgradeCost) {

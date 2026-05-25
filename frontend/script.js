@@ -32,7 +32,7 @@ const rarityRank = { N: 1, R: 2, S: 3, SS: 4, SSS: 5 };
 const mysteryBoxPrice = 100;
 const gearSellValues = { N: 30, R: 50, S: 100, SS: 250, SSS: 500 };
 const upgradeCost = 50;
-const maxUpgradeLevel = 3;
+const maxUpgradeLevel = 9;
 const upgradePowerGain = 10;
 const feedPetCost = 50;
 const petPowerGain = 10;
@@ -67,6 +67,14 @@ const sortInventoryItems = (items = []) => {
 
 const gearSellValue = (item) => {
   return gearSellValues[item?.rarity] ?? 0;
+};
+
+const itemUpgradeLevel = (item) => Number(item?.upgradeLevel || 0);
+
+const itemNameWithUpgrade = (item, { alwaysShow = false } = {}) => {
+  const level = itemUpgradeLevel(item);
+  const suffix = level > 0 || alwaysShow ? ` +${formatNumber(level)}` : '';
+  return `${escapeHtml(item?.name || '裝備')}${suffix}`;
 };
 
 const equipmentSlots = [
@@ -513,7 +521,7 @@ const renderShop = () => {
         ${
           state.player.items.length
             ? state.player.items
-                .map((item) => `<span class="inventory-tag">${escapeHtml(item.name)} +${formatNumber(item.power)}</span>`)
+                .map((item) => `<span class="inventory-tag">${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}</span>`)
                 .join('')
             : '<span class="inventory-tag">完成尋寶任務後再來採購</span>'
         }
@@ -543,7 +551,7 @@ const renderItemCard = (item) => {
     <article class="item-card">
       <div class="item-icon">${itemIcon()}</div>
       <div class="item-body">
-        <h3>${escapeHtml(item.name)}${item.upgradeLevel ? ` +${formatNumber(item.upgradeLevel)}` : ''}</h3>
+        <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>${escapeHtml(item.type)}</span>
@@ -617,7 +625,7 @@ const renderEquipment = () => {
                           .map(
                             (item) => `
                               <span class="inventory-tag">
-                                ${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} +${formatNumber(item.power)}
+                                ${escapeHtml(item.rarity || 'N')} ${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}
                                 <button class="tag-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>
                               </span>
                             `
@@ -665,7 +673,7 @@ const renderInventoryItem = (item, equippedIds) => {
     <article class="item-card">
       <div class="item-icon">${itemIcon()}</div>
       <div class="item-body">
-        <h3>${escapeHtml(item.name)}</h3>
+        <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>${escapeHtml(item.type)}</span>
@@ -678,7 +686,7 @@ const renderInventoryItem = (item, equippedIds) => {
               ? `<button class="mini-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
               : `<button class="mini-button" type="button" data-action="equip-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '穿戴'}</button>`
           }
-          <button class="mini-button danger-mini" type="button" data-action="sell-item" data-inventory-id="${escapeAttr(item.inventoryId)}" data-item-name="${escapeAttr(item.name)}" data-sell-value="${gearSellValue(item)}">賣出</button>
+          <button class="mini-button danger-mini" type="button" data-action="sell-item" data-inventory-id="${escapeAttr(item.inventoryId)}" data-item-name="${escapeAttr(item.name)}${itemUpgradeLevel(item) > 0 ? ` +${itemUpgradeLevel(item)}` : ''}" data-sell-value="${gearSellValue(item)}">賣出</button>
         </div>
       </div>
     </article>
@@ -707,7 +715,7 @@ const renderTradePanel = (myItems) => {
                   ${myItems
                     .map(
                       (item) => `
-                        <option value="${escapeAttr(item.inventoryId)}">${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} · +${formatNumber(item.power)}</option>
+                        <option value="${escapeAttr(item.inventoryId)}">${escapeHtml(item.rarity || 'N')} ${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}</option>
                       `
                     )
                     .join('')}
@@ -774,7 +782,7 @@ const renderTradeCard = (trade, mode) => {
         <span>${mode === 'incoming' ? '邀請你交換裝備' : '等待對方選擇裝備並回覆'}</span>
       </div>
       <div class="trade-swap">
-        <span>${escapeHtml(trade.offeredItem?.rarity || 'N')} ${escapeHtml(trade.offeredItem?.name)} +${formatNumber(trade.offeredItem?.power)}</span>
+        <span>${escapeHtml(trade.offeredItem?.rarity || 'N')} ${itemNameWithUpgrade(trade.offeredItem)} · 戰力 +${formatNumber(trade.offeredItem?.power)}</span>
         <span>⇄</span>
         <span>${mode === 'incoming' ? '請選擇你的裝備' : '對方尚未選擇'}</span>
       </div>
@@ -784,7 +792,7 @@ const renderTradeCard = (trade, mode) => {
             ? `
               <select class="compact-select" data-counter-trade="${escapeAttr(trade._id)}" aria-label="選擇交換裝備">
                 ${myTradeItems
-                  .map((item) => `<option value="${escapeAttr(item.inventoryId)}">${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} +${formatNumber(item.power)}</option>`)
+                  .map((item) => `<option value="${escapeAttr(item.inventoryId)}">${escapeHtml(item.rarity || 'N')} ${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}</option>`)
                   .join('')}
               </select>
               <button class="mini-button" type="button" data-action="accept-trade" data-trade-id="${escapeAttr(trade._id)}" ${myTradeItems.length ? '' : 'disabled'}>接受</button>
@@ -1175,14 +1183,14 @@ const renderUpgradeCard = (item) => {
     <article class="item-card">
       <div class="item-icon">${itemIcon()}</div>
       <div class="item-body">
-        <h3>${escapeHtml(item.name)} +${formatNumber(level)}</h3>
+        <h3>${itemNameWithUpgrade(item, { alwaysShow: true })}</h3>
         <div class="item-meta">
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>戰力 ${formatNumber(item.power)}</span>
           <span>成功率 ${maxed ? '已滿' : `${formatNumber(getUpgradeSuccessRate(item))}%`}</span>
           <span>費用 ${formatNumber(upgradeCost)}</span>
         </div>
-        <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? '已 +3' : canAfford ? '升級' : '金幣不足'}</button>
+        <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '升級' : '金幣不足'}</button>
       </div>
     </article>
   `;
@@ -1339,7 +1347,7 @@ const renderManagedGear = (player) => {
                           .map(
                             (item) => `
                               <span class="inventory-tag">
-                                ${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} +${formatNumber(item.power)}
+                                ${escapeHtml(item.rarity || 'N')} ${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}
                                 <button class="tag-button" type="button" data-action="unequip-item" data-player-id="${escapeAttr(player._id)}" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>
                               </span>
                             `
@@ -1371,7 +1379,7 @@ const renderManagedInventoryItem = (player, item, equippedIds) => {
 
   return `
     <div class="managed-item">
-      <span>${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} · ${escapeHtml(item.type)} · +${formatNumber(item.power)}</span>
+      <span>${escapeHtml(item.rarity || 'N')} ${itemNameWithUpgrade(item)} · ${escapeHtml(item.type)} · 戰力 +${formatNumber(item.power)}</span>
       ${
         equipped
           ? `<button class="mini-button" type="button" data-action="unequip-item" data-player-id="${escapeAttr(player._id)}" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
