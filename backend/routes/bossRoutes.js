@@ -123,7 +123,7 @@ const toNonNegativeInteger = (value, fallback) => {
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
 };
 
-const getBaseBossHp = () => toPositiveInteger(process.env.WORLD_BOSS_MAX_HP, 2_000_000);
+const getBaseBossHp = () => toPositiveInteger(process.env.WORLD_BOSS_MAX_HP, 3_024_000_000);
 const getSettleSeconds = () => toPositiveInteger(process.env.WORLD_BOSS_SETTLE_SECONDS, 10);
 const battleKeyForSlot = (slot) => `${bossKeyPrefix}-${slot}`;
 

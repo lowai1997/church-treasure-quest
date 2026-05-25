@@ -19,6 +19,6 @@ services:
       - key: TEACHER_REGISTER_KEY
         value: Amen2026
       - key: WORLD_BOSS_MAX_HP
-        value: 2000000
+        value: 3024000000
       - key: WORLD_BOSS_SETTLE_SECONDS
         value: 10
