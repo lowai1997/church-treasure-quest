@@ -119,10 +119,66 @@ const itemIcon = () => `
   </svg>
 `;
 
+const slotIcon = (type) => {
+  const slotKey = typeToSlot[type] || type;
+  const icons = {
+    weapon: `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M31.5 4.5 43 16 18.6 40.4l-8.1 2.1 2.1-8.1L37 10 31.5 4.5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+        <path d="m27 16 5 5M10 34l4 4M7 29l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      </svg>
+    `,
+    helmet: `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M9 25c0-10 6.4-17 15-17s15 7 15 17v10c0 3-2 5-5 5H14c-3 0-5-2-5-5V25Z" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M11 27h26M18 40V27M30 40V27M18 13c4 4 8 4 12 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      </svg>
+    `,
+    armor: `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M14 8h20l7 8-5 7-3-2v19H15V21l-3 2-5-7 7-8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+        <path d="M20 10c.6 4 2 6 4 7 2-1 3.4-3 4-7M24 18v20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      </svg>
+    `,
+    pants: `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M15 7h18l3 34h-9l-3-19-3 19h-9l3-34Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+        <path d="M16 14h16M24 8v14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      </svg>
+    `,
+    shoes: `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M11 27c5 3 11 2 15-5l5 8 8 3v6H8v-5l3-7Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+        <path d="M16 29h9M28 31h6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      </svg>
+    `,
+    accessory: `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M24 6 35 17 24 42 13 17 24 6Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+        <path d="M13 17h22M19 17l5 25 5-25M18 11h12" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+      </svg>
+    `
+  };
+
+  return icons[slotKey] || itemIcon();
+};
+
+const navSymbol = (view) =>
+  ({
+    hunt: '✦',
+    shop: '✧',
+    equipment: '◇',
+    upgrade: '✩',
+    pets: '♡',
+    players: '☰',
+    boss: '✺',
+    rank: '♕'
+  })[view] || '✦';
+
 const crestIcon = () => `
   <svg viewBox="0 0 64 64" aria-hidden="true">
-    <path d="M32 5 54 14v16c0 14.3-8.8 24.6-22 29C18.8 54.6 10 44.3 10 30V14L32 5Z" fill="none" stroke="currentColor" stroke-width="4"/>
-    <path d="M32 15v34M21 27h22M25 20l7-5 7 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+    <path d="M12 29h40M17 29v22M29 29v22M41 29v22M11 51h42M18 23l14-11 14 11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.4"/>
+    <path d="M32 18v9M27.5 22.5h9M32 5l2.2 4.4L39 10l-3.5 3.4.8 4.8L32 16l-4.3 2.2.8-4.8L25 10l4.8-.6L32 5Z" fill="currentColor"/>
   </svg>
 `;
 
@@ -267,7 +323,7 @@ const updateBossLiveHp = () => {
     }
 
     if (statusText && (hp <= 0 || timeLeft === 0)) {
-      statusText.textContent = hp <= 0 ? '已擊敗，正在更換目標' : '期限已到，戰線結算中';
+      statusText.textContent = hp <= 0 ? '已完成，正在更換目標' : '期限已到，旅程結算中';
     }
   });
 };
@@ -359,8 +415,8 @@ const renderAuth = () => {
       <div>
         <div class="brand-lockup">
           <div class="brand-mark">${crestIcon()}</div>
-          <h1>教會尋寶王</h1>
-          <p class="subtitle">信仰同行，完成任務、收集金幣、裝備你的尋寶隊伍。</p>
+          <h1>靈命之戰</h1>
+          <p class="subtitle">星光同行，完成任務、收集寶石，裝備你的信心旅程。</p>
         </div>
 
         <div class="panel">
@@ -388,7 +444,7 @@ const renderAuth = () => {
                   </div>
                   <div class="field ${state.authRole === 'teacher' ? '' : 'is-hidden'}">
                     <label for="teacherKey">導師註冊金鑰</label>
-                    <input id="teacherKey" name="teacherKey" placeholder="請輸入 Amen2026" />
+                    <input id="teacherKey" name="teacherKey" placeholder="請輸入導師註冊金鑰" />
                   </div>
                 `
                 : ''
@@ -396,7 +452,7 @@ const renderAuth = () => {
 
             <button class="primary-button" type="submit">${state.authMode === 'login' ? '登入' : '建立帳號'}</button>
           </form>
-          <p class="help-text">登入後會依照角色開啟團員商店或導師尋寶管理畫面。</p>
+          <p class="help-text">登入後會依照角色開啟團員星光商店或導師任務管理畫面。</p>
         </div>
       </div>
     </section>
@@ -405,7 +461,7 @@ const renderAuth = () => {
 
 const renderLoading = () => {
   stopBossTimers();
-  app.innerHTML = '<div class="loading">載入教會尋寶王...</div>';
+  app.innerHTML = '<div class="loading">載入靈命之戰...</div>';
 };
 
 const renderShell = () => {
@@ -413,12 +469,18 @@ const renderShell = () => {
   app.innerHTML = `
     <section class="app-shell">
       <header class="topbar">
-        <div class="player-chip">
-          <span class="player-name">${escapeHtml(state.player.name)}</span>
-          <span class="player-meta">${roleText(state.player.role)} · 戰力 ${formatNumber(totalPower(state.player))}</span>
+        <div class="profile-plaque">
+          <div class="profile-avatar">${crestIcon()}</div>
+          <div class="player-chip">
+            <span class="player-name">${escapeHtml(state.player.name)}</span>
+            <span class="player-meta">${roleText(state.player.role)} · 戰力 ${formatNumber(totalPower(state.player))}</span>
+            <span class="profile-meter" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(8, totalPower(state.player) / 10))}%"></span></span>
+          </div>
         </div>
-        <div class="wallet" aria-label="目前金幣">金幣 ${formatNumber(state.player.gold)}</div>
-        <button class="icon-button" type="button" data-action="logout" aria-label="登出">登出</button>
+        <div class="top-actions">
+          <div class="wallet" aria-label="目前金幣"><span class="wallet-icon" aria-hidden="true">✦</span>${formatNumber(state.player.gold)}</div>
+          <button class="icon-button" type="button" data-action="logout" aria-label="登出">退出</button>
+        </div>
       </header>
 
       <main class="content-stack">
@@ -426,14 +488,14 @@ const renderShell = () => {
       </main>
 
       <nav class="bottom-nav" aria-label="主要導覽">
-        ${navButton('hunt', '🗝️尋寶')}
-        ${navButton('shop', '🛒商店')}
-        ${state.player.role === 'student' ? navButton('equipment', '🛡️裝備') : ''}
-        ${state.player.role === 'student' ? navButton('upgrade', '⬆️升級') : ''}
-        ${state.player.role === 'student' ? navButton('pets', '🐾寵物') : ''}
-        ${state.player.role === 'teacher' ? navButton('players', '👥名單') : ''}
-        ${navButton('boss', '⚔️討伐')}
-        ${navButton('rank', '🏆排行榜')}
+        ${navButton('hunt', '任務')}
+        ${navButton('shop', '商店')}
+        ${state.player.role === 'student' ? navButton('equipment', '裝備') : ''}
+        ${state.player.role === 'student' ? navButton('upgrade', '升級') : ''}
+        ${state.player.role === 'student' ? navButton('pets', '寵物') : ''}
+        ${state.player.role === 'teacher' ? navButton('players', '名單') : ''}
+        ${navButton('boss', '挑戰')}
+        ${navButton('rank', '排行')}
       </nav>
     </section>
   `;
@@ -441,7 +503,10 @@ const renderShell = () => {
 };
 
 const navButton = (view, label) => `
-  <button class="nav-button ${state.view === view ? 'active' : ''}" type="button" data-view="${view}" aria-current="${state.view === view ? 'page' : 'false'}">${label}</button>
+  <button class="nav-button ${state.view === view ? 'active' : ''}" type="button" data-view="${view}" aria-current="${state.view === view ? 'page' : 'false'}">
+    <span class="nav-icon" aria-hidden="true">${navSymbol(view)}</span>
+    <span class="nav-label">${label}</span>
+  </button>
 `;
 
 const renderCurrentView = () => {
@@ -480,8 +545,8 @@ const renderShop = () => {
   if (state.player.role !== 'student') {
     return `
       <section class="view-title">
-        <h2>信心商店</h2>
-        <p>商店是團員購買裝備的地方，導師可切換到尋寶管理、名單或排行榜。</p>
+        <h2>星光商店</h2>
+        <p>商店是團員購買裝備的地方，導師可切換到任務管理、名單或排行榜。</p>
       </section>
       <div class="empty-card">目前帳號是導師角色，不需要購買裝備。</div>
     `;
@@ -489,7 +554,7 @@ const renderShop = () => {
 
   return `
     <section class="view-title">
-      <h2>信心商店</h2>
+      <h2>星光商店</h2>
       <p>每日刷新 5 件裝備，越稀有價格越高。</p>
     </section>
 
@@ -523,7 +588,7 @@ const renderShop = () => {
             ? state.player.items
                 .map((item) => `<span class="inventory-tag">${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}</span>`)
                 .join('')
-            : '<span class="inventory-tag">完成尋寶任務後再來採購</span>'
+            : '<span class="inventory-tag">完成星光任務後再來採購</span>'
         }
       </div>
     </section>
@@ -548,8 +613,8 @@ const renderItemCard = (item) => {
   const canBuy = Number(state.player.gold || 0) >= Number(item.price || 0);
 
   return `
-    <article class="item-card">
-      <div class="item-icon">${itemIcon()}</div>
+    <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
+      <div class="item-icon">${slotIcon(item.type)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -595,7 +660,7 @@ const renderEquipment = () => {
   return `
     <section class="view-title">
       <h2>裝備管理</h2>
-      <p>可穿戴 2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。</p>
+      <p>可穿戴 2 聖器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。</p>
     </section>
 
     <section class="stats-grid" aria-label="裝備狀態">
@@ -670,8 +735,8 @@ const renderInventoryItem = (item, equippedIds) => {
   const full = slotKey ? isSlotFull(slotKey) : true;
 
   return `
-    <article class="item-card">
-      <div class="item-icon">${itemIcon()}</div>
+    <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
+      <div class="item-icon">${slotIcon(item.type)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -809,7 +874,7 @@ const renderHunt = () => {
   if (state.player.role !== 'teacher') {
     return `
       <section class="view-title">
-        <h2>尋寶管理</h2>
+        <h2>任務管理</h2>
         <p>此頁面由導師用來選擇團員並發放金幣。</p>
       </section>
       <div class="empty-card">團員請前往商店購買裝備，或查看排行榜。</div>
@@ -818,7 +883,7 @@ const renderHunt = () => {
 
   return `
     <section class="view-title">
-      <h2>尋寶管理</h2>
+      <h2>任務管理</h2>
       <p>選擇團員後，可直接發放固定或自訂金幣。</p>
     </section>
 
@@ -866,26 +931,26 @@ const campaignNarrative = (config = {}) => {
   const maxStep = Number(config.worldSteps || 25);
 
   if (step <= 0) {
-    return '敵軍已壓到主城門前，所有討伐都會變成守城戰。';
+    return '旅程回到起點聖殿前，需要重新整理隊伍的節奏。';
   }
 
   if (step <= 5) {
-    return '敵軍正在逼近主城外圍，需要盡快擊殺 Boss 把戰線推回裂隙。';
+    return '星光稍微黯淡，需要團員一起完成挑戰，把旅程推回光亮處。';
   }
 
   if (step < Math.ceil(maxStep / 2)) {
-    return '戰線偏向我方世界，團員需要集中火力阻止敵軍繼續推進。';
+    return '旅程停在聖殿外圍，團員可以集中信心穩住前進方向。';
   }
 
   if (step < maxStep - 5) {
-    return '戰線在兩個世界之間拉鋸，每一次討伐都會改變前線位置。';
+    return '旅程在兩個世界之間展開，每一次挑戰都會讓星路前進或退回。';
   }
 
   if (step < maxStep) {
-    return '遠征隊已逼近敵方主世界，連續擊殺可以把戰線推到最深處。';
+    return '隊伍已接近星光深處，連續完成挑戰可以抵達更明亮的位置。';
   }
 
-  return '戰線已推到敵方主世界，下一波討伐將決定能否守住遠征成果。';
+  return '旅程已抵達星光深處，下一波挑戰將決定能否守住這份亮光。';
 };
 
 const renderCampaignTrack = (config = {}) => {
@@ -917,12 +982,12 @@ const renderNoticeBoard = () => {
     <section class="card notice-card">
       <div class="card-header">
         <div>
-          <h3>討伐公告板</h3>
-          <p>顯示最新戰報、過去 7 日失守，以及目前參戰團員貢獻。</p>
+          <h3>星光公告板</h3>
+          <p>顯示最新紀錄、過去 7 日退回，以及目前參與團員貢獻。</p>
         </div>
       </div>
       <div class="notice-section">
-        <h4>最新戰報</h4>
+        <h4>最新紀錄</h4>
         <div class="notice-list">
           ${
             latestNews.length
@@ -936,7 +1001,7 @@ const renderNoticeBoard = () => {
                     `
                   )
                   .join('')
-              : '<div class="empty-card">暫時未有戰報。</div>'
+              : '<div class="empty-card">暫時未有紀錄。</div>'
           }
         </div>
       </div>
@@ -955,7 +1020,7 @@ const renderNoticeBoard = () => {
                     `
                   )
                   .join('')
-              : '<div class="empty-card">過去 7 日沒有失守戰報。</div>'
+              : '<div class="empty-card">過去 7 日沒有退回紀錄。</div>'
           }
         </div>
       </div>
@@ -974,7 +1039,7 @@ const renderNoticeBoard = () => {
                     `
                   )
                   .join('')
-              : '<div class="empty-card">尚未有團員加入討伐。</div>'
+              : '<div class="empty-card">尚未有團員加入挑戰。</div>'
           }
         </div>
       </div>
@@ -986,8 +1051,8 @@ const renderHuntBosses = () => {
   if (!state.bosses.length) {
     return `
       <section class="view-title">
-        <h2>討伐</h2>
-        <p>正在載入討伐目標...</p>
+        <h2>星光挑戰</h2>
+        <p>正在載入挑戰目標...</p>
       </section>
       <div class="empty-card">請稍候。</div>
     `;
@@ -995,13 +1060,13 @@ const renderHuntBosses = () => {
 
   return `
     <section class="view-title">
-      <h2>討伐</h2>
-      <p>兩個世界之間有 25 步戰線。擊殺 Boss 會向敵方主世界推進，期限內未擊殺則敵軍往主城推進。</p>
+      <h2>星光挑戰</h2>
+      <p>兩個世界之間有 25 步旅程。完成 Boss 挑戰會向光明深處前進，期限內未完成則旅程退回一格。</p>
     </section>
 
-    <section class="stats-grid" aria-label="討伐狀態">
-      <div class="stat-card"><span>戰線位置</span><strong>${formatNumber(state.bossConfig?.frontlineStep)} / ${formatNumber(state.bossConfig?.worldSteps)}</strong></div>
-      <div class="stat-card"><span>已討伐</span><strong>${formatNumber(state.bossConfig?.killCount)}</strong></div>
+    <section class="stats-grid" aria-label="挑戰狀態">
+      <div class="stat-card"><span>旅程位置</span><strong>${formatNumber(state.bossConfig?.frontlineStep)} / ${formatNumber(state.bossConfig?.worldSteps)}</strong></div>
+      <div class="stat-card"><span>已完成</span><strong>${formatNumber(state.bossConfig?.killCount)}</strong></div>
       <div class="stat-card"><span>失守次數</span><strong>${formatNumber(state.bossConfig?.defenseLosses)}</strong></div>
       <div class="stat-card"><span>Boss 強度</span><strong>${formatNumber(state.bossConfig?.intensity || 1)}x</strong></div>
       <div class="stat-card"><span>基礎血量</span><strong>${formatNumber(state.bossConfig?.baseHp)}</strong></div>
@@ -1011,15 +1076,15 @@ const renderHuntBosses = () => {
     <section class="card campaign-card">
       <div class="card-header">
         <div>
-          <h3>主城戰線</h3>
+          <h3>星光旅程</h3>
           <p>${escapeHtml(campaignNarrative(state.bossConfig))}</p>
         </div>
       </div>
       <div class="frontline-labels">
-        <span>我方主城</span>
-        <span>敵方主世界</span>
+        <span>起點聖殿</span>
+        <span>星光深處</span>
       </div>
-      <div class="frontline-track" aria-label="兩個世界之間的 25 步戰線">
+      <div class="frontline-track" aria-label="兩個世界之間的 25 步星光旅程">
         ${renderCampaignTrack(state.bossConfig)}
       </div>
       <p class="campaign-event">${escapeHtml(state.bossConfig?.lastCampaignEvent || '')}</p>
@@ -1033,13 +1098,13 @@ const renderHuntBosses = () => {
           <section class="card">
             <div class="card-header">
               <div>
-                <h3>討伐設定</h3>
-                <p>可調整已討伐數、Boss 強度，並選擇是否立即重置三隻 Boss。</p>
+                <h3>挑戰設定</h3>
+                <p>可調整已完成數、Boss 強度，並選擇是否立即重置三隻 Boss。</p>
               </div>
             </div>
             <form id="boss-config-form" class="admin-controls">
               <div class="field">
-                <label for="killCount">已討伐數</label>
+                <label for="killCount">已完成數</label>
                 <input id="killCount" name="killCount" type="number" min="0" step="1" value="${Number(state.bossConfig?.killCount || 0)}" />
               </div>
               <div class="field">
@@ -1051,14 +1116,14 @@ const renderHuntBosses = () => {
                 <input id="bossDeadlineHours" name="bossDeadlineHours" type="number" min="1" step="1" value="${Number(state.bossConfig?.bossDeadlineHours || 120)}" />
               </div>
               <div class="field">
-                <label for="frontlineStep">戰線位置（0 主城 / 25 敵方主世界）</label>
+                <label for="frontlineStep">旅程位置（0 起點聖殿 / 25 星光深處）</label>
                 <input id="frontlineStep" name="frontlineStep" type="number" min="0" max="${Number(state.bossConfig?.worldSteps || 25)}" step="1" value="${Number(state.bossConfig?.frontlineStep ?? 13)}" />
               </div>
               <label class="check-row">
                 <input name="resetBosses" type="checkbox" />
                 <span>儲存後立即重置三隻 Boss</span>
               </label>
-              <button class="primary-button" type="submit">儲存討伐設定</button>
+              <button class="primary-button" type="submit">儲存挑戰設定</button>
             </form>
           </section>
         `
@@ -1077,9 +1142,9 @@ const renderBossCard = (boss) => {
   const estimate = getBossCompletionEstimate(boss);
   const defeated = hp <= 0 || Boolean(boss.defeatedAt);
   const bossStatus = defeated
-    ? '已擊敗，正在更換目標'
+    ? '已完成，正在更換目標'
     : timeLeft === 0
-      ? '期限已到，戰線結算中'
+      ? '期限已到，旅程結算中'
       : Number(boss.totalPower || 0) > 0
       ? `每秒 -${formatNumber(boss.totalPower)}`
       : '等待團員加入';
@@ -1093,7 +1158,7 @@ const renderBossCard = (boss) => {
         </div>
         <span class="price-pill">${formatNumber(boss.maxHp)} HP</span>
       </div>
-      <div class="boss-health" aria-label="討伐血量">
+      <div class="boss-health" aria-label="挑戰進度">
         <div class="boss-health-fill" data-boss-hp-bar="${escapeAttr(boss._id)}" style="width: ${bossHpPercent(boss)}%"></div>
       </div>
       <div class="boss-health-row">
@@ -1102,7 +1167,7 @@ const renderBossCard = (boss) => {
       </div>
       <div class="boss-health-row">
         <strong data-boss-deadline="${escapeAttr(boss._id)}">剩餘 ${formatDuration(timeLeft)}</strong>
-        <span>逾時會使戰線退後 1 格</span>
+        <span>逾時會使旅程退後 1 格</span>
       </div>
       <div class="boss-health-row">
         <strong data-boss-estimate="${escapeAttr(boss._id)}">預計完成 ${estimate.label}</strong>
@@ -1111,8 +1176,8 @@ const renderBossCard = (boss) => {
       <div class="boss-actions">
         ${
           state.player.role === 'student'
-            ? `<button class="primary-button" type="button" data-action="join-boss" data-boss-id="${escapeAttr(boss._id)}" ${boss.joined || defeated || timeLeft === 0 ? 'disabled' : ''}>${boss.joined ? '已加入此討伐' : '加入討伐'}</button>`
-            : `<button class="danger-button" type="button" data-action="reset-boss" data-boss-slot="${escapeAttr(boss.slot)}">重置此 Boss</button>`
+            ? `<button class="primary-button" type="button" data-action="join-boss" data-boss-id="${escapeAttr(boss._id)}" ${boss.joined || defeated || timeLeft === 0 ? 'disabled' : ''}>${boss.joined ? '已加入此挑戰' : '加入挑戰'}</button>`
+            : `<button class="danger-button" type="button" data-action="reset-boss" data-boss-slot="${escapeAttr(boss.slot)}">重置此挑戰</button>`
         }
       </div>
       <div class="participant-list">
@@ -1143,10 +1208,10 @@ const renderUpgrade = () => {
   if (state.player.role !== 'student') {
     return `
       <section class="view-title">
-        <h2>武器升級</h2>
-        <p>只有團員可以升級武器。</p>
+        <h2>聖器升級</h2>
+        <p>只有團員可以升級聖器。</p>
       </section>
-      <div class="empty-card">導師帳號不需要升級武器。</div>
+      <div class="empty-card">導師帳號不需要升級聖器。</div>
     `;
   }
 
@@ -1154,21 +1219,21 @@ const renderUpgrade = () => {
 
   return `
     <section class="view-title">
-      <h2>武器升級</h2>
-      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後武器 +1，戰力 +${formatNumber(upgradePowerGain)}；最高 +${formatNumber(maxUpgradeLevel)}。</p>
+      <h2>聖器升級</h2>
+      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後聖器 +1，戰力 +${formatNumber(upgradePowerGain)}；最高 +${formatNumber(maxUpgradeLevel)}。</p>
     </section>
 
     <section class="stats-grid">
       <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
       <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
-      <div class="stat-card"><span>武器數</span><strong>${formatNumber(weapons.length)}</strong></div>
+      <div class="stat-card"><span>聖器數</span><strong>${formatNumber(weapons.length)}</strong></div>
     </section>
 
     <section class="items-grid">
       ${
         weapons.length
           ? weapons.map(renderUpgradeCard).join('')
-          : '<div class="empty-card">背包尚無武器，可先到商店購買或開神秘盒。</div>'
+          : '<div class="empty-card">背包尚無聖器，可先到商店購買或開神秘盒。</div>'
       }
     </section>
   `;
@@ -1180,8 +1245,8 @@ const renderUpgradeCard = (item) => {
   const canAfford = Number(state.player.gold || 0) >= upgradeCost;
 
   return `
-    <article class="item-card">
-      <div class="item-icon">${itemIcon()}</div>
+    <article class="item-card upgrade-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
+      <div class="item-icon">${slotIcon(item.type)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item, { alwaysShow: true })}</h3>
         <div class="item-meta">
@@ -1424,7 +1489,7 @@ const renderRank = () => {
 
   return `
     <section class="view-title">
-      <h2>信心排行</h2>
+      <h2>星光排行</h2>
       <p>依照裝備與寵物總戰力排序，金幣不會計入戰力。</p>
     </section>
 
@@ -1781,7 +1846,7 @@ app.addEventListener('click', async (event) => {
   }
 
   if (action === 'reset-boss') {
-    if (!window.confirm('確定要重置此討伐 Boss 嗎？目前參戰名單與血量會重新開始。')) {
+    if (!window.confirm('確定要重置此挑戰嗎？目前參與名單與進度會重新開始。')) {
       return;
     }
 

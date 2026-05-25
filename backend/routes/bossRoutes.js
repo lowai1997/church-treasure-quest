@@ -504,7 +504,9 @@ const publicCampaignEvent = (event) => ({
 
 const buildNoticeBoard = (config, bossPayloads) => {
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const events = trimCampaignEvents(config.campaignEvents || []).map(publicCampaignEvent);
+  const events = trimCampaignEvents(config.campaignEvents || [])
+    .filter((event) => event.type !== 'manual')
+    .map(publicCampaignEvent);
   const contributionByPlayer = new Map();
 
   bossPayloads.forEach((boss) => {

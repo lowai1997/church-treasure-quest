@@ -1,7 +1,7 @@
 {
   "name": "church-treasure-quest",
   "version": "1.0.0",
-  "description": "教會尋寶王 Church Treasure Quest - mobile web game with Express and MongoDB.",
+  "description": "靈命之戰 - light fantasy mobile web game with Express and MongoDB.",
   "type": "module",
   "main": "backend/server.js",
   "scripts": {
