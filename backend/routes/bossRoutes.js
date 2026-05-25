@@ -127,7 +127,8 @@ const toNonNegativeInteger = (value, fallback) => {
 
 const getBaseBossHp = () => toPositiveInteger(process.env.WORLD_BOSS_MAX_HP, 3_024_000_000);
 const getSettleSeconds = () => toPositiveInteger(process.env.WORLD_BOSS_SETTLE_SECONDS, 10);
-const getBossDeadlineHours = () => toPositiveInteger(process.env.WORLD_BOSS_DEADLINE_HOURS, 120);
+const getDefaultBossDeadlineHours = () => toPositiveInteger(process.env.WORLD_BOSS_DEADLINE_HOURS, 120);
+const getBossDeadlineHours = (config = null) => toPositiveInteger(config?.bossDeadlineHours, getDefaultBossDeadlineHours());
 const battleKeyForSlot = (slot) => `${bossKeyPrefix}-${slot}`;
 
 const clampCampaignStep = (value) => {
@@ -140,7 +141,7 @@ const clampCampaignStep = (value) => {
   return Math.max(0, Math.min(worldStepCount, Math.floor(parsed)));
 };
 
-const addBossDeadline = (date) => new Date(date.getTime() + getBossDeadlineHours() * 60 * 60 * 1000);
+const addBossDeadline = (date, config = null) => new Date(date.getTime() + getBossDeadlineHours(config) * 60 * 60 * 1000);
 
 const getBossDeadlineAt = (boss) => {
   if (boss.deadlineAt) {
@@ -148,6 +149,21 @@ const getBossDeadlineAt = (boss) => {
   }
 
   return addBossDeadline(boss.startedAt || new Date());
+};
+
+const createEventParticipants = (participants = []) =>
+  participants.map((participant) => ({
+    player: participant._id,
+    name: participant.name,
+    power: Number(participant.totalPower || participant.power || 0)
+  }));
+
+const trimCampaignEvents = (events = []) => {
+  const newestFirst = [...events].sort((left, right) => {
+    return new Date(right.occurredAt || 0).getTime() - new Date(left.occurredAt || 0).getTime();
+  });
+
+  return newestFirst.slice(0, 50);
 };
 
 const normalizeConfig = async (config) => {
@@ -176,6 +192,25 @@ const normalizeConfig = async (config) => {
 
   if (config.defenseLosses === undefined || config.defenseLosses === null || Number.isNaN(Number(config.defenseLosses))) {
     config.defenseLosses = 0;
+    changed = true;
+  }
+
+  if (config.bossDeadlineHours === undefined || config.bossDeadlineHours === null) {
+    config.bossDeadlineHours = getDefaultBossDeadlineHours();
+    changed = true;
+  }
+
+  const normalizedDeadlineHours = getBossDeadlineHours(config);
+  if (config.bossDeadlineHours !== normalizedDeadlineHours) {
+    config.bossDeadlineHours = normalizedDeadlineHours;
+    changed = true;
+  }
+
+  if (!Array.isArray(config.campaignEvents)) {
+    config.campaignEvents = [];
+    changed = true;
+  } else if (config.campaignEvents.length > 50) {
+    config.campaignEvents = trimCampaignEvents(config.campaignEvents);
     changed = true;
   }
 
@@ -223,7 +258,7 @@ const spawnBoss = async (slot, config = null) => {
   const now = new Date();
   const name = await claimBossName();
   const { maxHp, intensity } = buildBossStats(activeConfig.intensity);
-  const deadlineAt = addBossDeadline(now);
+  const deadlineAt = addBossDeadline(now, activeConfig);
 
   return BossBattle.findOneAndUpdate(
     { battleKey: battleKeyForSlot(slot) },
@@ -247,6 +282,17 @@ const spawnBoss = async (slot, config = null) => {
   );
 };
 
+const syncActiveBossDeadlines = async (config) => {
+  const bosses = await BossBattle.find({ battleKey: { $regex: `^${bossKeyPrefix}-` } });
+  const updates = bosses.map((boss) => {
+    const startedAt = boss.startedAt || new Date();
+    boss.deadlineAt = addBossDeadline(startedAt, config);
+    return boss.save();
+  });
+
+  await Promise.all(updates);
+};
+
 const ensureActiveBosses = async () => {
   const config = await getOrCreateConfig();
   const bosses = [];
@@ -259,7 +305,7 @@ const ensureActiveBosses = async () => {
     }
 
     if (!boss.deadlineAt) {
-      boss.deadlineAt = addBossDeadline(boss.startedAt || new Date());
+      boss.deadlineAt = addBossDeadline(boss.startedAt || new Date(), config);
       await boss.save();
     }
 
@@ -350,24 +396,38 @@ const settleBoss = async (boss, totalPower, { force = false } = {}) => {
   return updatedBoss || BossBattle.findById(boss._id);
 };
 
-const moveCampaignFront = async (outcome, bossName) => {
+const moveCampaignFront = async (outcome, bossName, powerSnapshot = { totalPower: 0, participants: [] }) => {
   const config = await getOrCreateConfig();
+  let eventMessage = '';
 
   if (outcome === 'victory') {
     config.killCount = Number(config.killCount || 0) + 1;
     config.frontlineStep = clampCampaignStep(config.frontlineStep + 1);
-    config.lastCampaignEvent = `團員擊退了「${bossName}」，戰線向敵方主世界推進一格。`;
+    eventMessage = `團員擊退了「${bossName}」，戰線向敵方主世界推進一格。`;
   } else {
     config.defenseLosses = Number(config.defenseLosses || 0) + 1;
     config.frontlineStep = clampCampaignStep(config.frontlineStep - 1);
-    config.lastCampaignEvent = `「${bossName}」突破期限，戰線往我方主城退後一格。`;
+    eventMessage = `「${bossName}」突破期限，戰線往我方主城退後一格。`;
   }
 
+  config.lastCampaignEvent = eventMessage;
+  config.campaignEvents = trimCampaignEvents([
+    {
+      type: outcome === 'victory' ? 'victory' : 'expired',
+      bossName,
+      message: eventMessage,
+      frontlineStep: config.frontlineStep,
+      totalPower: Number(powerSnapshot.totalPower || 0),
+      participants: createEventParticipants(powerSnapshot.participants),
+      occurredAt: new Date()
+    },
+    ...(config.campaignEvents || [])
+  ]);
   await config.save();
   return config;
 };
 
-const resolveBossOutcome = async (boss, liveHp) => {
+const resolveBossOutcome = async (boss, liveHp, powerSnapshot = { totalPower: 0, participants: [] }) => {
   const now = new Date();
   const deadlineAt = getBossDeadlineAt(boss);
   const isVictory = Boolean(boss.defeatedAt) || liveHp <= 0;
@@ -397,8 +457,81 @@ const resolveBossOutcome = async (boss, liveHp) => {
     return BossBattle.findById(boss._id);
   }
 
-  const config = await moveCampaignFront(isVictory ? 'victory' : 'expired', claimed.name);
+  const config = await moveCampaignFront(isVictory ? 'victory' : 'expired', claimed.name, powerSnapshot);
   return spawnBoss(boss.slot, config);
+};
+
+const buildCompletionEstimate = (liveHp, totalPower, responseAt, deadlineAt) => {
+  if (liveHp <= 0) {
+    return {
+      estimatedSecondsToDefeat: 0,
+      estimatedDefeatedAt: responseAt.toISOString(),
+      willMissDeadline: false
+    };
+  }
+
+  if (totalPower <= 0) {
+    return {
+      estimatedSecondsToDefeat: null,
+      estimatedDefeatedAt: null,
+      willMissDeadline: true
+    };
+  }
+
+  const estimatedSecondsToDefeat = Math.ceil(liveHp / totalPower);
+  const estimatedDefeatedAt = new Date(responseAt.getTime() + estimatedSecondsToDefeat * 1000);
+
+  return {
+    estimatedSecondsToDefeat,
+    estimatedDefeatedAt: estimatedDefeatedAt.toISOString(),
+    willMissDeadline: estimatedDefeatedAt > deadlineAt
+  };
+};
+
+const publicCampaignEvent = (event) => ({
+  eventId: event.eventId,
+  type: event.type,
+  bossName: event.bossName,
+  message: event.message,
+  frontlineStep: event.frontlineStep,
+  totalPower: Number(event.totalPower || 0),
+  participants: (event.participants || []).map((participant) => ({
+    name: participant.name,
+    power: Number(participant.power || 0)
+  })),
+  occurredAt: event.occurredAt ? event.occurredAt.toISOString() : null
+});
+
+const buildNoticeBoard = (config, bossPayloads) => {
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const events = trimCampaignEvents(config.campaignEvents || []).map(publicCampaignEvent);
+  const contributionByPlayer = new Map();
+
+  bossPayloads.forEach((boss) => {
+    (boss.participants || []).forEach((participant) => {
+      const key = participant._id || participant.name;
+      const existing = contributionByPlayer.get(key) || {
+        name: participant.name,
+        totalPower: 0,
+        battleCount: 0,
+        bosses: []
+      };
+      existing.totalPower += Number(participant.totalPower || 0);
+      existing.battleCount += 1;
+      existing.bosses.push(boss.name);
+      contributionByPlayer.set(key, existing);
+    });
+  });
+
+  return {
+    latestNews: events.slice(0, 8),
+    lossesPastSevenDays: events.filter((event) => {
+      return event.type === 'expired' && event.occurredAt && new Date(event.occurredAt).getTime() >= sevenDaysAgo;
+    }),
+    contributions: [...contributionByPlayer.values()].sort((left, right) => {
+      return right.totalPower - left.totalPower || left.name.localeCompare(right.name, 'zh-Hant');
+    })
+  };
 };
 
 const buildBossPayload = async (boss, currentUserId, { forceSettle = false } = {}) => {
@@ -412,13 +545,14 @@ const buildBossPayload = async (boss, currentUserId, { forceSettle = false } = {
     : Math.max(0, Math.floor((liveCalculationAt.getTime() - settledBoss.lastSettledAt.getTime()) / 1000));
   const liveHp = Math.max(0, Number(settledBoss.hp || 0) - elapsedSeconds * powerSnapshot.totalPower);
 
-  settledBoss = await resolveBossOutcome(settledBoss, liveHp);
+  settledBoss = await resolveBossOutcome(settledBoss, liveHp, powerSnapshot);
 
   if (liveHp <= 0 || settledBoss.startedAt.getTime() !== boss.startedAt.getTime()) {
     return buildBossPayload(settledBoss, currentUserId);
   }
 
   const participantIds = new Set(powerSnapshot.participants.map((player) => player._id));
+  const completionEstimate = buildCompletionEstimate(liveHp, powerSnapshot.totalPower, responseAt, deadlineAt);
 
   return {
     _id: settledBoss._id.toString(),
@@ -438,17 +572,25 @@ const buildBossPayload = async (boss, currentUserId, { forceSettle = false } = {
     calculatedAt: responseAt.toISOString(),
     defeatedAt: settledBoss.defeatedAt ? settledBoss.defeatedAt.toISOString() : null,
     failedAt: settledBoss.failedAt ? settledBoss.failedAt.toISOString() : null,
+    ...completionEstimate,
     settleEverySeconds: getSettleSeconds()
   };
 };
 
 const buildStatusPayload = async (currentUserId) => {
   const { bosses } = await ensureActiveBosses();
-  const bossPayloads = await Promise.all(bosses.map((boss) => buildBossPayload(boss, currentUserId)));
+  const bossPayloads = [];
+
+  for (const boss of bosses) {
+    bossPayloads.push(await buildBossPayload(boss, currentUserId));
+  }
+
   const config = await getOrCreateConfig();
+  const noticeBoard = buildNoticeBoard(config, bossPayloads);
 
   return {
     bosses: bossPayloads.sort((left, right) => left.slot - right.slot),
+    noticeBoard,
     config: {
       killCount: config.killCount,
       defenseLosses: config.defenseLosses || 0,
@@ -457,7 +599,7 @@ const buildStatusPayload = async (currentUserId) => {
       activeBossCount,
       worldSteps: config.worldSteps,
       frontlineStep: config.frontlineStep,
-      bossDeadlineHours: getBossDeadlineHours(),
+      bossDeadlineHours: getBossDeadlineHours(config),
       lastCampaignEvent: config.lastCampaignEvent
     }
   };
@@ -543,6 +685,8 @@ router.post('/worldBoss/reset', verifyToken, requireRole('teacher'), async (req,
 router.post('/worldBoss/config', verifyToken, requireRole('teacher'), async (req, res, next) => {
   try {
     const config = await getOrCreateConfig();
+    let deadlineChanged = false;
+    let frontlineChanged = false;
 
     if (req.body.killCount !== undefined) {
       config.killCount = toNonNegativeInteger(req.body.killCount, config.killCount);
@@ -552,15 +696,37 @@ router.post('/worldBoss/config', verifyToken, requireRole('teacher'), async (req
       config.intensity = toPositiveInteger(req.body.intensity, config.intensity);
     }
 
+    if (req.body.bossDeadlineHours !== undefined) {
+      const nextDeadlineHours = toPositiveInteger(req.body.bossDeadlineHours, config.bossDeadlineHours);
+      deadlineChanged = nextDeadlineHours !== config.bossDeadlineHours;
+      config.bossDeadlineHours = nextDeadlineHours;
+    }
+
     if (req.body.frontlineStep !== undefined) {
-      config.frontlineStep = clampCampaignStep(req.body.frontlineStep);
-      config.lastCampaignEvent = '導師手動調整了兩個世界之間的戰線位置。';
+      const nextFrontlineStep = clampCampaignStep(req.body.frontlineStep);
+      frontlineChanged = nextFrontlineStep !== config.frontlineStep;
+      config.frontlineStep = nextFrontlineStep;
+      if (frontlineChanged) {
+        const eventMessage = '導師手動調整了兩個世界之間的戰線位置。';
+        config.lastCampaignEvent = eventMessage;
+        config.campaignEvents = trimCampaignEvents([
+          {
+            type: 'manual',
+            message: eventMessage,
+            frontlineStep: config.frontlineStep,
+            occurredAt: new Date()
+          },
+          ...(config.campaignEvents || [])
+        ]);
+      }
     }
 
     await config.save();
 
     if (req.body.resetBosses) {
       await Promise.all(Array.from({ length: activeBossCount }, (_, index) => spawnBoss(index, config)));
+    } else if (deadlineChanged) {
+      await syncActiveBossDeadlines(config);
     }
 
     return res.json({

@@ -10,6 +10,7 @@ const state = {
   players: [],
   bosses: [],
   bossConfig: null,
+  noticeBoard: null,
   tradePlayers: [],
   incomingTrades: [],
   outgoingTrades: [],
@@ -181,6 +182,37 @@ const formatDuration = (milliseconds) => {
   return `${minutes}分`;
 };
 
+const getBossCompletionEstimate = (boss) => {
+  const hp = getLiveBossHp(boss);
+  const totalPower = Number(boss?.totalPower || 0);
+
+  if (hp <= 0) {
+    return {
+      label: '已擊敗',
+      detail: '正在更換目標',
+      willMissDeadline: false
+    };
+  }
+
+  if (totalPower <= 0) {
+    return {
+      label: '未能估算',
+      detail: '等待團員加入',
+      willMissDeadline: true
+    };
+  }
+
+  const estimatedMilliseconds = Math.ceil(hp / totalPower) * 1000;
+  const timeLeft = getBossTimeLeft(boss);
+  const willMissDeadline = timeLeft !== null && estimatedMilliseconds > timeLeft;
+
+  return {
+    label: formatDuration(estimatedMilliseconds),
+    detail: willMissDeadline ? '可能逾時' : '可於期限內完成',
+    willMissDeadline
+  };
+};
+
 const bossHpPercent = (boss) => {
   if (!boss || !Number(boss.maxHp)) {
     return 0;
@@ -200,7 +232,10 @@ const updateBossLiveHp = () => {
     const hpBar = document.querySelector(`[data-boss-hp-bar="${boss._id}"]`);
     const statusText = document.querySelector(`[data-boss-status="${boss._id}"]`);
     const deadlineText = document.querySelector(`[data-boss-deadline="${boss._id}"]`);
+    const estimateText = document.querySelector(`[data-boss-estimate="${boss._id}"]`);
+    const estimateStatus = document.querySelector(`[data-boss-estimate-status="${boss._id}"]`);
     const timeLeft = getBossTimeLeft(boss);
+    const estimate = getBossCompletionEstimate(boss);
 
     hpTexts.forEach((hpText) => {
       hpText.textContent = formatNumber(hp);
@@ -208,6 +243,15 @@ const updateBossLiveHp = () => {
 
     if (deadlineText) {
       deadlineText.textContent = `剩餘 ${formatDuration(timeLeft)}`;
+    }
+
+    if (estimateText) {
+      estimateText.textContent = `預計完成 ${estimate.label}`;
+    }
+
+    if (estimateStatus) {
+      estimateStatus.textContent = estimate.detail;
+      estimateStatus.classList.toggle('danger-text', estimate.willMissDeadline);
     }
 
     if (hpBar) {
@@ -289,6 +333,7 @@ const clearSession = () => {
   state.players = [];
   state.bosses = [];
   state.bossConfig = null;
+  state.noticeBoard = null;
   state.tradePlayers = [];
   state.incomingTrades = [];
   state.outgoingTrades = [];
@@ -854,6 +899,81 @@ const renderCampaignTrack = (config = {}) => {
   }).join('');
 };
 
+const renderNoticeBoard = () => {
+  const notice = state.noticeBoard || {};
+  const latestNews = notice.latestNews || [];
+  const losses = notice.lossesPastSevenDays || [];
+  const contributions = notice.contributions || [];
+
+  return `
+    <section class="card notice-card">
+      <div class="card-header">
+        <div>
+          <h3>討伐公告板</h3>
+          <p>顯示最新戰報、過去 7 日失守，以及目前參戰團員貢獻。</p>
+        </div>
+      </div>
+      <div class="notice-section">
+        <h4>最新戰報</h4>
+        <div class="notice-list">
+          ${
+            latestNews.length
+              ? latestNews
+                  .map(
+                    (event) => `
+                      <div class="notice-row">
+                        <strong>${escapeHtml(event.message)}</strong>
+                        <span>${event.occurredAt ? new Date(event.occurredAt).toLocaleString('zh-Hant-HK') : ''}</span>
+                      </div>
+                    `
+                  )
+                  .join('')
+              : '<div class="empty-card">暫時未有戰報。</div>'
+          }
+        </div>
+      </div>
+      <div class="notice-section">
+        <h4>過去 7 日失守</h4>
+        <div class="notice-list">
+          ${
+            losses.length
+              ? losses
+                  .map(
+                    (event) => `
+                      <div class="notice-row danger-row">
+                        <strong>${escapeHtml(event.bossName || '未知 Boss')}</strong>
+                        <span>${event.occurredAt ? new Date(event.occurredAt).toLocaleString('zh-Hant-HK') : ''} · 合計戰力 ${formatNumber(event.totalPower)}</span>
+                      </div>
+                    `
+                  )
+                  .join('')
+              : '<div class="empty-card">過去 7 日沒有失守戰報。</div>'
+          }
+        </div>
+      </div>
+      <div class="notice-section">
+        <h4>目前貢獻</h4>
+        <div class="notice-list">
+          ${
+            contributions.length
+              ? contributions
+                  .map(
+                    (player) => `
+                      <div class="notice-row contribution-row">
+                        <strong>${escapeHtml(player.name)}</strong>
+                        <span>貢獻戰力 ${formatNumber(player.totalPower)} · ${escapeHtml((player.bosses || []).join('、'))}</span>
+                      </div>
+                    `
+                  )
+                  .join('')
+              : '<div class="empty-card">尚未有團員加入討伐。</div>'
+          }
+        </div>
+      </div>
+    </section>
+  `;
+};
+
 const renderHuntBosses = () => {
   if (!state.bosses.length) {
     return `
@@ -897,6 +1017,8 @@ const renderHuntBosses = () => {
       <p class="campaign-event">${escapeHtml(state.bossConfig?.lastCampaignEvent || '')}</p>
     </section>
 
+    ${renderNoticeBoard()}
+
     ${
       state.player.role === 'teacher'
         ? `
@@ -915,6 +1037,10 @@ const renderHuntBosses = () => {
               <div class="field">
                 <label for="bossIntensity">Boss 強度</label>
                 <input id="bossIntensity" name="intensity" type="number" min="1" step="1" value="${Number(state.bossConfig?.intensity || 1)}" />
+              </div>
+              <div class="field">
+                <label for="bossDeadlineHours">Boss 時限（小時）</label>
+                <input id="bossDeadlineHours" name="bossDeadlineHours" type="number" min="1" step="1" value="${Number(state.bossConfig?.bossDeadlineHours || 120)}" />
               </div>
               <div class="field">
                 <label for="frontlineStep">戰線位置（0 主城 / 25 敵方主世界）</label>
@@ -940,6 +1066,7 @@ const renderHuntBosses = () => {
 const renderBossCard = (boss) => {
   const hp = getLiveBossHp(boss);
   const timeLeft = getBossTimeLeft(boss);
+  const estimate = getBossCompletionEstimate(boss);
   const defeated = hp <= 0 || Boolean(boss.defeatedAt);
   const bossStatus = defeated
     ? '已擊敗，正在更換目標'
@@ -968,6 +1095,10 @@ const renderBossCard = (boss) => {
       <div class="boss-health-row">
         <strong data-boss-deadline="${escapeAttr(boss._id)}">剩餘 ${formatDuration(timeLeft)}</strong>
         <span>逾時會使戰線退後 1 格</span>
+      </div>
+      <div class="boss-health-row">
+        <strong data-boss-estimate="${escapeAttr(boss._id)}">預計完成 ${estimate.label}</strong>
+        <span class="${estimate.willMissDeadline ? 'danger-text' : ''}" data-boss-estimate-status="${escapeAttr(boss._id)}">${estimate.detail}</span>
       </div>
       <div class="boss-actions">
         ${
@@ -1362,6 +1493,7 @@ const loadWorldBoss = async () => {
   const data = await api('/api/worldBoss/status');
   state.bosses = data.bosses || [];
   state.bossConfig = data.config || null;
+  state.noticeBoard = data.noticeBoard || null;
 };
 
 const loadTradeData = async () => {
@@ -1438,6 +1570,7 @@ const runAction = async (action, successMessage) => {
     if (result?.bosses) {
       state.bosses = result.bosses;
       state.bossConfig = result.config || state.bossConfig;
+      state.noticeBoard = result.noticeBoard || state.noticeBoard;
     }
 
     showToast(result?.message || successMessage || '操作完成。');
@@ -1782,6 +1915,7 @@ app.addEventListener('submit', async (event) => {
         body: JSON.stringify({
           killCount: formData.get('killCount'),
           intensity: formData.get('intensity'),
+          bossDeadlineHours: formData.get('bossDeadlineHours'),
           frontlineStep: formData.get('frontlineStep'),
           resetBosses: formData.get('resetBosses') === 'on'
         })
