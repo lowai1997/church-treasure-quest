@@ -1,23 +1,135 @@
 import Item from '../models/Item.js';
 
-export const defaultItems = [
-  { name: '信念大劍', type: 'weapon', price: 4200, power: 560 },
-  { name: '守護之盾', type: 'shield', price: 3200, power: 420 },
-  { name: '聖潔鎧甲', type: 'armor', price: 5800, power: 760 },
-  { name: '勇氣頭盔', type: 'helmet', price: 2600, power: 300 },
-  { name: '光耀斗篷', type: 'cloak', price: 2100, power: 240 },
-  { name: '祝福戒指', type: 'ring', price: 1800, power: 210 },
-  { name: '晨星法杖', type: 'staff', price: 3900, power: 510 },
-  { name: '聖堂靴', type: 'boots', price: 1500, power: 180 }
+export const rarityConfig = {
+  N: { label: '普通', weight: 50, power: 20, price: 100 },
+  R: { label: '稀有', weight: 25, power: 55, price: 250 },
+  S: { label: '超稀有', weight: 15, power: 110, price: 550 },
+  SS: { label: '傳說', weight: 8, power: 220, price: 1200 },
+  SSS: { label: '神話', weight: 2, power: 420, price: 2500 }
+};
+
+const rawItems = [
+  ['大衛之石刃', 'N', '武器'],
+  ['基甸火炬刃', 'N', '武器'],
+  ['伊甸短劍', 'N', '武器'],
+  ['方舟弓', 'N', '武器'],
+  ['巴比倫鐵鎚', 'N', '武器'],
+  ['基列之矛', 'N', '武器'],
+  ['十災之槍', 'N', '武器'],
+  ['分海之杖', 'N', '武器'],
+  ['打鐵者之斧', 'R', '武器'],
+  ['瑪拉荊刃', 'R', '武器'],
+  ['流放之弓', 'R', '武器'],
+  ['伯利恆之弩', 'R', '武器'],
+  ['示巴之矢', 'S', '武器'],
+  ['以法蓮之戟', 'S', '武器'],
+  ['啟示七號劍', 'SS', '武器'],
+  ['約瑟彩衣刃', 'SS', '武器'],
+  ['永約之刃', 'SSS', '武器'],
+  ['錫安聖冠', 'N', '頭盔'],
+  ['迦密頭環', 'N', '頭盔'],
+  ['所羅門冕冠', 'N', '頭盔'],
+  ['曠野風盔', 'N', '頭盔'],
+  ['亞伯拉罕之冠', 'N', '頭盔'],
+  ['先知額飾', 'R', '頭盔'],
+  ['以賽亞之燈盔', 'R', '頭盔'],
+  ['約旦冥冠', 'R', '頭盔'],
+  ['方舟守冕', 'R', '頭盔'],
+  ['天軍光盔', 'R', '頭盔'],
+  ['摩西冠飾', 'S', '頭盔'],
+  ['拉撒路額冠', 'S', '頭盔'],
+  ['歌利亞碎首盔', 'S', '頭盔'],
+  ['但以理影盔', 'SS', '頭盔'],
+  ['旭日聖冕', 'SS', '頭盔'],
+  ['哈得山聖冠', 'SS', '頭盔'],
+  ['白馬騎士盔', 'SSS', '頭盔'],
+  ['信仰之盾', 'N', '胸甲'],
+  ['烈火護甲', 'N', '胸甲'],
+  ['羔羊胸環', 'N', '胸甲'],
+  ['所羅門心甲', 'N', '胸甲'],
+  ['流奶披甲', 'N', '胸甲'],
+  ['方舟壁甲', 'N', '胸甲'],
+  ['曠野之護', 'N', '胸甲'],
+  ['七印胸甲', 'R', '胸甲'],
+  ['約櫃胸甲', 'R', '胸甲'],
+  ['撒母耳審判鎧', 'R', '胸甲'],
+  ['錫安之衛', 'R', '胸甲'],
+  ['發芽護胸', 'S', '胸甲'],
+  ['伊甸鎧甲', 'S', '胸甲'],
+  ['新耶路撒冷輝', 'S', '胸甲'],
+  ['紅海裂鎧', 'SS', '胸甲'],
+  ['瑪拿恩息', 'SS', '胸甲'],
+  ['經文印甲', 'SSS', '胸甲'],
+  ['曠野行者腿甲', 'N', '褲'],
+  ['摩西巡路腿甲', 'N', '褲'],
+  ['亞倫銅腿', 'N', '褲'],
+  ['猶大旅褲', 'N', '褲'],
+  ['以撒皮腿', 'N', '褲'],
+  ['伯利恆行褲', 'N', '褲'],
+  ['亞當束帶', 'N', '褲'],
+  ['押沙龍戰腿', 'R', '褲'],
+  ['班雅憫皮褲', 'R', '褲'],
+  ['以諾鋼腿', 'R', '褲'],
+  ['撒烈鐵腿', 'R', '褲'],
+  ['但支行護', 'S', '褲'],
+  ['馬拉坡革', 'S', '褲'],
+  ['基列護腿', 'S', '褲'],
+  ['流亡者腿甲', 'SS', '褲'],
+  ['迦南旅者褲', 'SS', '褲'],
+  ['流放之路', 'SSS', '褲'],
+  ['迦南行靴', 'N', '鞋'],
+  ['曠野之履', 'N', '鞋'],
+  ['伯利恆皮鞋', 'N', '鞋'],
+  ['沙得拉烈焰足', 'N', '鞋'],
+  ['亞伯救贖鞋', 'N', '鞋'],
+  ['以利亞輕步靴', 'N', '鞋'],
+  ['方舟皮履', 'N', '鞋'],
+  ['天使之履', 'R', '鞋'],
+  ['旭日光靴', 'R', '鞋'],
+  ['錫安鐵足', 'R', '鞋'],
+  ['撒母耳旅途鞋', 'R', '鞋'],
+  ['牧者之履', 'S', '鞋'],
+  ['瑪那之踵', 'S', '鞋'],
+  ['約旦泥靴', 'S', '鞋'],
+  ['羔羊祝福履', 'SS', '鞋'],
+  ['天穹行靴', 'SS', '鞋'],
+  ['永生步伐', 'SSS', '鞋'],
+  ['審判之環', 'N', '裝飾品'],
+  ['約櫃之印戒', 'N', '裝飾品'],
+  ['迦南印石', 'N', '裝飾品'],
+  ['雲柱吊墜', 'N', '裝飾品'],
+  ['曠野風鈴', 'N', '裝飾品'],
+  ['聖靈項鍊', 'N', '裝飾品'],
+  ['瑪哪耳飾', 'N', '裝飾品'],
+  ['約旦心石', 'R', '裝飾品'],
+  ['智慧之柱飾', 'R', '裝飾品'],
+  ['以賽亞之燈飾', 'R', '裝飾品'],
+  ['心靈旌旗墜', 'R', '裝飾品'],
+  ['沙得拉火瓶', 'S', '裝飾品'],
+  ['巴別之飾', 'S', '裝飾品'],
+  ['聖約脈環', 'SS', '裝飾品'],
+  ['書卷神印', 'SSS', '裝飾品']
 ];
 
+export const defaultItems = rawItems.map(([name, rarity, type]) => ({
+  name,
+  rarity,
+  type,
+  power: rarityConfig[rarity].power,
+  price: rarityConfig[rarity].price
+}));
+
 export const seedDefaultItems = async () => {
-  const itemCount = await Item.countDocuments();
+  const operations = defaultItems.map((item) => ({
+    updateOne: {
+      filter: { name: item.name },
+      update: { $set: item },
+      upsert: true
+    }
+  }));
+  const itemNames = defaultItems.map((item) => item.name);
 
-  if (itemCount > 0) {
-    return;
-  }
-
-  await Item.insertMany(defaultItems);
-  console.log(`Seeded ${defaultItems.length} default shop items.`);
+  await Item.bulkWrite(operations);
+  await Item.deleteMany({ name: { $nin: itemNames } });
+  console.log(`Synced ${defaultItems.length} treasure items.`);
 };

@@ -62,6 +62,10 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ message: '名稱或密碼不正確。' });
     }
 
+    player.ensureInventoryIds();
+    player.recalculatePower();
+    await player.save();
+
     const token = signToken(player);
 
     return res.json({
@@ -73,10 +77,18 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-router.get('/me', verifyToken, (req, res) => {
-  return res.json({
-    player: req.user.toSafeObject()
-  });
+router.get('/me', verifyToken, async (req, res, next) => {
+  try {
+    req.user.ensureInventoryIds();
+    req.user.recalculatePower();
+    await req.user.save();
+
+    return res.json({
+      player: req.user.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 export default router;

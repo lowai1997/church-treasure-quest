@@ -86,17 +86,21 @@ http://localhost:3000
 | `/api/addGold` | POST | 導師新增金幣（需 JWT、導師角色、活動密碼） |
 | `/api/updateGold` | POST | 導師修改金幣數量 |
 | `/api/players` | GET | 導師取得團員玩家名單 |
-| `/api/getItems` | GET | 取得商店物品清單 |
+| `/api/getItems` | GET | 取得每日商店 5 件物品 |
 | `/api/buyItem` | POST | 團員購買物品，更新裝備與金幣 |
-| `/api/openBox` | POST | 團員抽取神秘盒獲得隨機裝備 |
+| `/api/openBox` | POST | 團員花費 50 金幣抽取神秘盒獲得隨機裝備 |
+| `/api/equipItem` | POST | 團員穿戴背包中的裝備 |
+| `/api/unequipItem` | POST | 團員卸下已穿戴裝備 |
 | `/api/getRank` | GET | 依照總戰力排序玩家 |
 | `/api/removePlayer` | DELETE | 導師刪除團員玩家帳號 |
 
 ## 角色與權限
 
-- 團員：可進入商店、購買裝備、開神秘盒、查看排行榜。
+- 團員：可進入商店、購買裝備、開神秘盒、穿戴裝備、查看排行榜。
 - 導師：可進入尋寶管理、用活動密碼新增金幣、直接修正金幣、刪除團員玩家、查看排行榜。
 - 若設定 `TEACHER_REGISTER_KEY`，註冊導師帳號時需輸入正確金鑰。
+- 神秘盒固定 50 金幣一次，機率為 N 50%、R 25%、S 15%、SS 8%、SSS 2%。
+- 裝備欄位限制：2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。
 
 ## 部署提示
 
@@ -135,7 +139,7 @@ https://church-treasure-quest.onrender.com
 npm run seed
 ```
 
-伺服器啟動時也會自動建立預設商店物品；若資料庫已有物品，不會重複新增。
+伺服器啟動時也會自動同步預設裝備清單；每日商店會從裝備池中固定刷新 5 件。
 
 部署環境需設定：
 

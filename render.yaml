@@ -17,4 +17,4 @@ services:
       - key: TREASURE_EVENT_CODE
         sync: false
       - key: BOX_PRICE
-        value: 1000
+        value: 50

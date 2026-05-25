@@ -5,6 +5,7 @@ const state = {
   authMode: 'login',
   authRole: 'student',
   items: [],
+  storeDate: '',
   rank: [],
   players: [],
   addGoldAmount: 100,
@@ -17,6 +18,32 @@ const toast = document.querySelector('#toast');
 const formatNumber = (value) => new Intl.NumberFormat('zh-Hant-TW').format(Number(value || 0));
 
 const totalPower = (player) => Number(player?.totalPower ?? 0);
+
+const equipmentSlots = [
+  { key: 'weapon', label: '武器', limit: 2 },
+  { key: 'helmet', label: '頭盔', limit: 1 },
+  { key: 'armor', label: '胸甲', limit: 1 },
+  { key: 'pants', label: '褲', limit: 1 },
+  { key: 'shoes', label: '鞋', limit: 1 },
+  { key: 'accessory', label: '裝飾品', limit: 2 }
+];
+
+const typeToSlot = {
+  武器: 'weapon',
+  頭盔: 'helmet',
+  胸甲: 'armor',
+  褲: 'pants',
+  鞋: 'shoes',
+  裝飾品: 'accessory',
+  weapon: 'weapon',
+  staff: 'weapon',
+  helmet: 'helmet',
+  armor: 'armor',
+  shield: 'armor',
+  cloak: 'armor',
+  boots: 'shoes',
+  ring: 'accessory'
+};
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -169,6 +196,7 @@ const renderShell = () => {
       <nav class="bottom-nav" aria-label="主要導覽">
         ${navButton('hunt', '🗝️尋寶')}
         ${navButton('shop', '🛒商店')}
+        ${state.player.role === 'student' ? navButton('equipment', '🛡️裝備') : ''}
         ${state.player.role === 'teacher' ? navButton('players', '👥名單') : ''}
         ${navButton('rank', '🏆排行榜')}
       </nav>
@@ -193,6 +221,10 @@ const renderCurrentView = () => {
     return renderPlayers();
   }
 
+  if (state.view === 'equipment') {
+    return renderEquipment();
+  }
+
   return renderShop();
 };
 
@@ -210,7 +242,7 @@ const renderShop = () => {
   return `
     <section class="view-title">
       <h2>信心商店</h2>
-      <p>使用活動金幣購買裝備，提升你的總戰力。</p>
+      <p>每日刷新 5 件裝備，越稀有價格越高。</p>
     </section>
 
     <section class="stats-grid" aria-label="玩家狀態">
@@ -223,9 +255,9 @@ const renderShop = () => {
       <div class="card-header">
         <div>
           <h3>神秘盒</h3>
-          <p>花費固定金幣，隨機獲得一件裝備。</p>
+          <p>每次 50 金幣，依照稀有度機率隨機獲得一件裝備。</p>
         </div>
-        <span class="price-pill">${formatNumber(window.CTQ_BOX_PRICE || 1000)}</span>
+        <span class="price-pill">50</span>
       </div>
       <button class="primary-button" type="button" data-action="open-box">開啟 1 次</button>
     </section>
@@ -233,7 +265,7 @@ const renderShop = () => {
     <section class="card">
       <div class="card-header">
         <div>
-          <h3>我的裝備</h3>
+          <h3>我的背包</h3>
           <p>${state.player.items.length ? `已收集 ${state.player.items.length} 件裝備` : '尚未取得裝備'}</p>
         </div>
       </div>
@@ -249,6 +281,12 @@ const renderShop = () => {
     </section>
 
     <section class="items-grid" aria-label="商店裝備">
+      <div class="card-header">
+        <div>
+          <h3>今日商店</h3>
+          <p>${state.storeDate ? `刷新日期 ${state.storeDate}` : '每日自動刷新'}</p>
+        </div>
+      </div>
       ${
         state.items.length
           ? state.items.map(renderItemCard).join('')
@@ -267,11 +305,121 @@ const renderItemCard = (item) => {
       <div class="item-body">
         <h3>${escapeHtml(item.name)}</h3>
         <div class="item-meta">
+          <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>${escapeHtml(item.type)}</span>
           <span>戰力 +${formatNumber(item.power)}</span>
           <span>金幣 ${formatNumber(item.price)}</span>
         </div>
         <button class="mini-button" type="button" data-action="buy-item" data-item-id="${escapeAttr(item._id)}" ${canBuy ? '' : 'disabled'}>${canBuy ? '購買' : '金幣不足'}</button>
+      </div>
+    </article>
+  `;
+};
+
+const getEquippedIds = () => new Set(Object.values(state.player?.equipped || {}).flat());
+
+const getSlotItems = (slotKey) => {
+  const equippedIds = new Set(state.player?.equipped?.[slotKey] || []);
+  return (state.player?.items || []).filter((item) => equippedIds.has(item.inventoryId));
+};
+
+const isSlotFull = (slotKey) => {
+  const slot = equipmentSlots.find((item) => item.key === slotKey);
+  return Number(state.player?.equipped?.[slotKey]?.length || 0) >= Number(slot?.limit || 0);
+};
+
+const renderEquipment = () => {
+  if (state.player.role !== 'student') {
+    return `
+      <section class="view-title">
+        <h2>裝備管理</h2>
+        <p>此頁面由團員穿戴裝備提升戰力。</p>
+      </section>
+      <div class="empty-card">導師帳號不需要穿戴裝備。</div>
+    `;
+  }
+
+  const equippedIds = getEquippedIds();
+
+  return `
+    <section class="view-title">
+      <h2>裝備管理</h2>
+      <p>可穿戴 2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。</p>
+    </section>
+
+    <section class="stats-grid" aria-label="裝備狀態">
+      <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.power)}</strong></div>
+      <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
+      <div class="stat-card"><span>總戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>目前穿戴</h3>
+          <p>穿戴中的裝備才會計入裝備戰力。</p>
+        </div>
+      </div>
+      <div class="equipment-slots">
+        ${equipmentSlots
+          .map((slot) => {
+            const slotItems = getSlotItems(slot.key);
+            return `
+              <div class="equipment-slot">
+                <strong>${slot.label} ${slotItems.length}/${slot.limit}</strong>
+                <div class="inventory-list">
+                  ${
+                    slotItems.length
+                      ? slotItems
+                          .map(
+                            (item) => `
+                              <span class="inventory-tag">
+                                ${escapeHtml(item.rarity || 'N')} ${escapeHtml(item.name)} +${formatNumber(item.power)}
+                                <button class="tag-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>
+                              </span>
+                            `
+                          )
+                          .join('')
+                      : '<span class="inventory-tag">空</span>'
+                  }
+                </div>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+    </section>
+
+    <section class="items-grid" aria-label="背包裝備">
+      ${
+        state.player.items.length
+          ? state.player.items.map((item) => renderInventoryItem(item, equippedIds)).join('')
+          : '<div class="empty-card">背包尚無裝備，可到商店購買或開神秘盒。</div>'
+      }
+    </section>
+  `;
+};
+
+const renderInventoryItem = (item, equippedIds) => {
+  const slotKey = typeToSlot[item.type];
+  const equipped = equippedIds.has(item.inventoryId);
+  const full = slotKey ? isSlotFull(slotKey) : true;
+
+  return `
+    <article class="item-card">
+      <div class="item-icon">${itemIcon()}</div>
+      <div class="item-body">
+        <h3>${escapeHtml(item.name)}</h3>
+        <div class="item-meta">
+          <span>${escapeHtml(item.rarity || 'N')}</span>
+          <span>${escapeHtml(item.type)}</span>
+          <span>戰力 +${formatNumber(item.power)}</span>
+        </div>
+        ${
+          equipped
+            ? `<button class="mini-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
+            : `<button class="mini-button" type="button" data-action="equip-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '穿戴'}</button>`
+        }
       </div>
     </article>
   `;
@@ -387,7 +535,6 @@ const renderAdminRow = (player) => `
 
 const renderRank = () => {
   const topThree = state.rank.slice(0, 3);
-  const rest = state.rank.slice(3);
 
   return `
     <section class="view-title">
@@ -418,11 +565,11 @@ const renderRank = () => {
     <section class="rank-list" aria-label="排行榜列表">
       ${
         state.rank.length
-          ? rest
+          ? state.rank
               .map(
                 (player, index) => `
                   <article class="rank-row">
-                    <strong>${index + 4}</strong>
+                    <strong>${index + 1}</strong>
                     <div>
                       <strong>${escapeHtml(player.name)}</strong>
                       <span>金幣 ${formatNumber(player.gold)} · 裝備 ${player.itemCount || 0}</span>
@@ -431,7 +578,7 @@ const renderRank = () => {
                   </article>
                 `
               )
-              .join('') || '<div class="empty-card">目前只有前三名玩家。</div>'
+              .join('')
           : '<div class="empty-card">排行榜尚無團員玩家。</div>'
       }
     </section>
@@ -446,6 +593,7 @@ const loadMe = async () => {
 const loadItems = async () => {
   const data = await api('/api/getItems');
   state.items = data.items;
+  state.storeDate = data.refreshDate || '';
 };
 
 const loadRank = async () => {
@@ -586,6 +734,28 @@ app.addEventListener('click', async (event) => {
       api('/api/openBox', {
         method: 'POST',
         body: JSON.stringify({})
+      })
+    );
+    return;
+  }
+
+  if (action === 'equip-item') {
+    const inventoryId = actionButton.dataset.inventoryId;
+    await runAction(() =>
+      api('/api/equipItem', {
+        method: 'POST',
+        body: JSON.stringify({ inventoryId })
+      })
+    );
+    return;
+  }
+
+  if (action === 'unequip-item') {
+    const inventoryId = actionButton.dataset.inventoryId;
+    await runAction(() =>
+      api('/api/unequipItem', {
+        method: 'POST',
+        body: JSON.stringify({ inventoryId })
       })
     );
     return;

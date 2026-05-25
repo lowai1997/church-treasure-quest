@@ -481,6 +481,9 @@ h1 {
 }
 
 .inventory-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 10px;
   color: var(--blue-800);
   background: rgba(220, 236, 255, 0.7);
@@ -488,6 +491,38 @@ h1 {
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.tag-button {
+  min-height: 28px;
+  padding: 0 8px;
+  color: #ffffff;
+  background: var(--blue-800);
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.equipment-slots {
+  display: grid;
+  gap: 12px;
+}
+
+.equipment-slot {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.equipment-slot:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.equipment-slot strong {
+  color: var(--blue-950);
 }
 
 .admin-controls {

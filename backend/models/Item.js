@@ -12,6 +12,11 @@ const itemSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    rarity: {
+      type: String,
+      enum: ['N', 'R', 'S', 'SS', 'SSS'],
+      default: 'N'
+    },
     price: {
       type: Number,
       required: true,

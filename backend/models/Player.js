@@ -23,6 +23,16 @@ const playerItemSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    rarity: {
+      type: String,
+      enum: ['N', 'R', 'S', 'SS', 'SSS'],
+      default: 'N'
+    },
+    inventoryId: {
+      type: String,
+      required: true,
+      default: () => new mongoose.Types.ObjectId().toString()
+    },
     acquiredAt: {
       type: Date,
       default: Date.now
@@ -60,6 +70,32 @@ const playerSchema = new mongoose.Schema(
       type: [playerItemSchema],
       default: []
     },
+    equipped: {
+      weapon: {
+        type: [String],
+        default: []
+      },
+      helmet: {
+        type: [String],
+        default: []
+      },
+      armor: {
+        type: [String],
+        default: []
+      },
+      pants: {
+        type: [String],
+        default: []
+      },
+      shoes: {
+        type: [String],
+        default: []
+      },
+      accessory: {
+        type: [String],
+        default: []
+      }
+    },
     power: {
       type: Number,
       default: 0,
@@ -70,6 +106,15 @@ const playerSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+playerSchema.pre('validate', function ensureLegacyInventoryIds(next) {
+  this.items.forEach((item) => {
+    if (!item.inventoryId) {
+      item.inventoryId = new mongoose.Types.ObjectId().toString();
+    }
+  });
+  next();
+});
 
 playerSchema.pre('save', async function hashPassword(next) {
   if (!this.isModified('password')) {
@@ -84,8 +129,24 @@ playerSchema.methods.comparePassword = function comparePassword(candidatePasswor
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+playerSchema.methods.ensureInventoryIds = function ensureInventoryIds() {
+  let changed = false;
+
+  this.items.forEach((item) => {
+    if (!item.inventoryId) {
+      item.inventoryId = new mongoose.Types.ObjectId().toString();
+      changed = true;
+    }
+  });
+
+  return changed;
+};
+
 playerSchema.methods.recalculatePower = function recalculatePower() {
-  this.power = this.items.reduce((total, item) => total + Number(item.power || 0), 0);
+  const equippedIds = new Set(Object.values(this.equipped || {}).flat());
+  this.power = this.items.reduce((total, item) => {
+    return equippedIds.has(item.inventoryId) ? total + Number(item.power || 0) : total;
+  }, 0);
   return this.power;
 };
 
