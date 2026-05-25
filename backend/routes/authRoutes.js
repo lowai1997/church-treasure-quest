@@ -27,7 +27,7 @@ router.post('/register', async (req, res, next) => {
       process.env.TEACHER_REGISTER_KEY &&
       teacherKey !== process.env.TEACHER_REGISTER_KEY
     ) {
-      return res.status(403).json({ message: '教師註冊金鑰不正確。' });
+      return res.status(403).json({ message: '導師註冊金鑰不正確。' });
     }
 
     const player = await Player.create({

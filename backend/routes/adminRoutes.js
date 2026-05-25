@@ -51,7 +51,7 @@ router.post('/addGold', verifyToken, requireRole('teacher'), async (req, res, ne
     const player = await findStudent({ playerId, name });
 
     if (!player) {
-      return res.status(404).json({ message: '找不到此學生玩家。' });
+      return res.status(404).json({ message: '找不到此團員玩家。' });
     }
 
     player.gold += result.amount;
@@ -78,7 +78,7 @@ router.post('/updateGold', verifyToken, requireRole('teacher'), async (req, res,
     const player = await findStudent({ playerId, name });
 
     if (!player) {
-      return res.status(404).json({ message: '找不到此學生玩家。' });
+      return res.status(404).json({ message: '找不到此團員玩家。' });
     }
 
     player.gold = result.amount;
@@ -100,7 +100,7 @@ router.delete('/removePlayer', verifyToken, requireRole('teacher'), async (req, 
     const player = await findStudent({ playerId, name });
 
     if (!player) {
-      return res.status(404).json({ message: '找不到此學生玩家。' });
+      return res.status(404).json({ message: '找不到此團員玩家。' });
     }
 
     await player.deleteOne();

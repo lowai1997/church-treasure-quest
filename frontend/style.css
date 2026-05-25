@@ -172,8 +172,15 @@ h1 {
   margin: 12px 0;
 }
 
+.amount-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
 .tab-button,
 .role-button,
+.amount-button,
 .ghost-button,
 .primary-button,
 .danger-button,
@@ -191,6 +198,7 @@ h1 {
 
 .tab-button,
 .role-button,
+.amount-button,
 .ghost-button,
 .icon-button {
   color: var(--blue-800);
@@ -198,7 +206,8 @@ h1 {
 }
 
 .tab-button.active,
-.role-button.active {
+.role-button.active,
+.amount-button.active {
   color: #ffffff;
   border-color: transparent;
   background: linear-gradient(135deg, var(--blue-800), var(--blue-700));
@@ -223,7 +232,8 @@ h1 {
 .danger-button:hover,
 .icon-button:hover,
 .tab-button:hover,
-.role-button:hover {
+.role-button:hover,
+.amount-button:hover {
   transform: translateY(-1px);
 }
 
@@ -622,7 +632,7 @@ h1 {
   z-index: 10;
   width: min(100%, 460px);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   background: rgba(255, 253, 247, 0.96);

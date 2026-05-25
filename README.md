@@ -1,6 +1,6 @@
 # 教會尋寶王 Church Treasure Quest
 
-給教會團契學生玩的手機網頁遊戲。學生可登入、收集金幣、購買裝備、開神秘盒並查看排行榜；教師可登入後台，用活動密碼幫學生新增金幣、修正金幣或刪除學生帳號。
+給教會團契團員玩的手機網頁遊戲。團員可登入、收集金幣、購買裝備、開神秘盒並查看排行榜；導師可登入後台，用活動密碼幫團員新增金幣、修正金幣或刪除團員帳號。
 
 ## 技術
 
@@ -80,23 +80,23 @@ http://localhost:3000
 
 | 路徑 | 方法 | 功能 |
 | --- | --- | --- |
-| `/api/register` | POST | 建立新帳號（學生或教師） |
+| `/api/register` | POST | 建立新帳號（團員或導師） |
 | `/api/login` | POST | 登入並回傳角色資訊與 Token |
 | `/api/me` | GET | 取得目前登入者 |
-| `/api/addGold` | POST | 教師新增金幣（需 JWT、教師角色、活動密碼） |
-| `/api/updateGold` | POST | 教師修改金幣數量 |
-| `/api/players` | GET | 教師取得學生玩家名單 |
+| `/api/addGold` | POST | 導師新增金幣（需 JWT、導師角色、活動密碼） |
+| `/api/updateGold` | POST | 導師修改金幣數量 |
+| `/api/players` | GET | 導師取得團員玩家名單 |
 | `/api/getItems` | GET | 取得商店物品清單 |
-| `/api/buyItem` | POST | 學生購買物品，更新裝備與金幣 |
-| `/api/openBox` | POST | 學生抽取神秘盒獲得隨機裝備 |
+| `/api/buyItem` | POST | 團員購買物品，更新裝備與金幣 |
+| `/api/openBox` | POST | 團員抽取神秘盒獲得隨機裝備 |
 | `/api/getRank` | GET | 依照總戰力排序玩家 |
-| `/api/removePlayer` | DELETE | 教師刪除學生玩家帳號 |
+| `/api/removePlayer` | DELETE | 導師刪除團員玩家帳號 |
 
 ## 角色與權限
 
-- 學生：可進入商店、購買裝備、開神秘盒、查看排行榜。
-- 教師：可進入尋寶管理、用活動密碼新增金幣、直接修正金幣、刪除學生玩家、查看排行榜。
-- 若設定 `TEACHER_REGISTER_KEY`，註冊教師帳號時需輸入正確金鑰。
+- 團員：可進入商店、購買裝備、開神秘盒、查看排行榜。
+- 導師：可進入尋寶管理、用活動密碼新增金幣、直接修正金幣、刪除團員玩家、查看排行榜。
+- 若設定 `TEACHER_REGISTER_KEY`，註冊導師帳號時需輸入正確金鑰。
 
 ## 部署提示
 
@@ -120,7 +120,7 @@ https://github.com/lowai1997/church-treasure-quest
 
 ```env
 MONGODB_URI=你的 MongoDB Atlas connection string
-TREASURE_EVENT_CODE=教師發金幣用的活動密碼
+TREASURE_EVENT_CODE=導師發金幣用的活動密碼
 ```
 
 4. 部署完成後，Render 會提供公開網址，例如：
@@ -142,7 +142,7 @@ npm run seed
 ```env
 MONGODB_URI=你的 MongoDB Atlas 連線字串
 JWT_SECRET=請使用長且隨機的字串
-TREASURE_EVENT_CODE=教師發金幣用的活動密碼
+TREASURE_EVENT_CODE=導師發金幣用的活動密碼
 NODE_ENV=production
 ```
 

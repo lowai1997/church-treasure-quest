@@ -7,6 +7,7 @@ const state = {
   items: [],
   rank: [],
   players: [],
+  addGoldAmount: 100,
   busy: false
 };
 
@@ -91,7 +92,7 @@ const clearSession = () => {
   localStorage.removeItem('ctqToken');
 };
 
-const roleText = (role) => (role === 'teacher' ? '教師' : '學生');
+const roleText = (role) => (role === 'teacher' ? '導師' : '團員');
 
 const renderAuth = () => {
   setBodyView('login');
@@ -124,11 +125,11 @@ const renderAuth = () => {
               state.authMode === 'register'
                 ? `
                   <div class="role-picker" aria-label="選擇角色">
-                    <button class="role-button ${state.authRole === 'student' ? 'active' : ''}" type="button" data-auth-role="student">學生</button>
-                    <button class="role-button ${state.authRole === 'teacher' ? 'active' : ''}" type="button" data-auth-role="teacher">教師</button>
+                    <button class="role-button ${state.authRole === 'student' ? 'active' : ''}" type="button" data-auth-role="student">團員</button>
+                    <button class="role-button ${state.authRole === 'teacher' ? 'active' : ''}" type="button" data-auth-role="teacher">導師</button>
                   </div>
                   <div class="field ${state.authRole === 'teacher' ? '' : 'is-hidden'}">
-                    <label for="teacherKey">教師註冊金鑰</label>
+                    <label for="teacherKey">導師註冊金鑰</label>
                     <input id="teacherKey" name="teacherKey" placeholder="若伺服器有設定才需填寫" />
                   </div>
                 `
@@ -137,7 +138,7 @@ const renderAuth = () => {
 
             <button class="primary-button" type="submit">${state.authMode === 'login' ? '登入' : '建立帳號'}</button>
           </form>
-          <p class="help-text">登入後會依照角色開啟學生商店或教師尋寶管理畫面。</p>
+          <p class="help-text">登入後會依照角色開啟團員商店或導師尋寶管理畫面。</p>
         </div>
       </div>
     </section>
@@ -168,6 +169,7 @@ const renderShell = () => {
       <nav class="bottom-nav" aria-label="主要導覽">
         ${navButton('hunt', '🗝️尋寶')}
         ${navButton('shop', '🛒商店')}
+        ${state.player.role === 'teacher' ? navButton('players', '👥名單') : ''}
         ${navButton('rank', '🏆排行榜')}
       </nav>
     </section>
@@ -187,6 +189,10 @@ const renderCurrentView = () => {
     return renderRank();
   }
 
+  if (state.view === 'players') {
+    return renderPlayers();
+  }
+
   return renderShop();
 };
 
@@ -195,9 +201,9 @@ const renderShop = () => {
     return `
       <section class="view-title">
         <h2>信心商店</h2>
-        <p>商店是學生購買裝備的地方，教師可切換到尋寶管理或排行榜。</p>
+        <p>商店是團員購買裝備的地方，導師可切換到尋寶管理、名單或排行榜。</p>
       </section>
-      <div class="empty-card">目前帳號是教師角色，不需要購買裝備。</div>
+      <div class="empty-card">目前帳號是導師角色，不需要購買裝備。</div>
     `;
   }
 
@@ -276,16 +282,16 @@ const renderHunt = () => {
     return `
       <section class="view-title">
         <h2>尋寶管理</h2>
-        <p>此頁面由教師用來輸入活動密碼並發放金幣。</p>
+        <p>此頁面由導師用來輸入活動密碼並發放金幣。</p>
       </section>
-      <div class="empty-card">學生請前往商店購買裝備，或查看排行榜。</div>
+      <div class="empty-card">團員請前往商店購買裝備，或查看排行榜。</div>
     `;
   }
 
   return `
     <section class="view-title">
       <h2>尋寶管理</h2>
-      <p>輸入活動密碼後，為完成任務的學生新增金幣，也可直接修正金幣數量。</p>
+      <p>輸入活動密碼後，為完成任務的團員新增金幣。</p>
     </section>
 
     <section class="card">
@@ -295,22 +301,59 @@ const renderHunt = () => {
           <input id="eventPassword" name="eventPassword" type="password" placeholder="請輸入本次活動密碼" required />
         </div>
         <div class="field">
-          <label for="studentName">學生名稱</label>
-          <input id="studentName" name="name" placeholder="輸入學生玩家名稱" required />
+          <label for="studentName">團員名稱</label>
+          <select id="studentName" name="playerId" required ${state.players.length ? '' : 'disabled'}>
+            ${
+              state.players.length
+                ? state.players
+                    .map((player) => `<option value="${escapeAttr(player._id)}">${escapeHtml(player.name)}（金幣 ${formatNumber(player.gold)}）</option>`)
+                    .join('')
+                : '<option value="">尚無團員玩家</option>'
+            }
+          </select>
         </div>
         <div class="field">
-          <label for="amount">新增金幣</label>
-          <input id="amount" name="amount" type="number" min="1" step="1" value="100" required />
+          <label>新增金幣</label>
+          <div class="amount-options" role="group" aria-label="新增金幣數量">
+            ${[50, 100, 150, 200]
+              .map(
+                (amount) => `
+                  <button class="amount-button ${state.addGoldAmount === amount ? 'active' : ''}" type="button" data-coin-amount="${amount}">
+                    ${amount}
+                  </button>
+                `
+              )
+              .join('')}
+          </div>
+          <input type="hidden" name="amount" value="${state.addGoldAmount}" />
         </div>
-        <button class="primary-button" type="submit">新增金幣</button>
+        <button class="primary-button" type="submit" ${state.players.length ? '' : 'disabled'}>新增金幣</button>
       </form>
     </section>
+  `;
+};
 
+const renderPlayers = () => {
+  if (state.player.role !== 'teacher') {
+    return `
+      <section class="view-title">
+        <h2>團員名單</h2>
+        <p>此頁面由導師查看與調整團員資料。</p>
+      </section>
+      <div class="empty-card">只有導師可以查看團員名單。</div>
+    `;
+  }
+
+  return `
+    <section class="view-title">
+      <h2>團員名單</h2>
+      <p>查看所有團員，直接修正金幣數量，或移除離隊帳號。</p>
+    </section>
     <section class="card">
       <div class="card-header">
         <div>
           <h3>玩家名單與金幣調整</h3>
-          <p>目前共有 ${state.players.length} 位學生玩家。</p>
+          <p>目前共有 ${state.players.length} 位團員玩家。</p>
         </div>
         <button class="ghost-button" type="button" data-action="refresh-players">刷新</button>
       </div>
@@ -318,7 +361,7 @@ const renderHunt = () => {
         ${
           state.players.length
             ? state.players.map(renderAdminRow).join('')
-            : '<div class="empty-card">尚無學生玩家。</div>'
+            : '<div class="empty-card">尚無團員玩家。</div>'
         }
       </div>
     </section>
@@ -337,8 +380,6 @@ const renderAdminRow = (player) => `
     <div class="row-actions">
       <input aria-label="${escapeAttr(player.name)} 新金幣數量" type="number" min="0" step="1" value="${player.gold}" data-gold-input="${escapeAttr(player._id)}" />
       <button class="mini-button" type="button" data-action="update-gold" data-player-id="${escapeAttr(player._id)}">儲存</button>
-      <input aria-label="${escapeAttr(player.name)} 新增金幣" type="number" min="1" step="1" value="100" data-add-input="${escapeAttr(player._id)}" />
-      <button class="mini-button" type="button" data-action="add-gold-row" data-player-id="${escapeAttr(player._id)}">加金幣</button>
       <button class="danger-button" type="button" data-action="remove-player" data-player-id="${escapeAttr(player._id)}" data-player-name="${escapeAttr(player.name)}">刪除玩家</button>
     </div>
   </article>
@@ -391,7 +432,7 @@ const renderRank = () => {
                 `
               )
               .join('') || '<div class="empty-card">目前只有前三名玩家。</div>'
-          : '<div class="empty-card">排行榜尚無學生玩家。</div>'
+          : '<div class="empty-card">排行榜尚無團員玩家。</div>'
       }
     </section>
   `;
@@ -438,7 +479,7 @@ const refreshViewData = async () => {
     await loadRank();
   }
 
-  if (state.view === 'hunt') {
+  if (state.view === 'hunt' || state.view === 'players') {
     await loadPlayers();
   }
 
@@ -471,6 +512,7 @@ app.addEventListener('click', async (event) => {
   const field = event.target.closest('.field');
   const authModeButton = event.target.closest('[data-auth-mode]');
   const authRoleButton = event.target.closest('[data-auth-role]');
+  const coinAmountButton = event.target.closest('[data-coin-amount]');
   const nav = event.target.closest('.nav-button[data-view]');
   const actionButton = event.target.closest('[data-action]');
 
@@ -489,6 +531,18 @@ app.addEventListener('click', async (event) => {
   if (authRoleButton) {
     state.authRole = authRoleButton.dataset.authRole;
     renderAuth();
+    return;
+  }
+
+  if (coinAmountButton) {
+    state.addGoldAmount = Number(coinAmountButton.dataset.coinAmount);
+    document.querySelectorAll('[data-coin-amount]').forEach((button) => {
+      button.classList.toggle('active', Number(button.dataset.coinAmount) === state.addGoldAmount);
+    });
+    const amountInput = document.querySelector('#quick-add-form input[name="amount"]');
+    if (amountInput) {
+      amountInput.value = state.addGoldAmount;
+    }
     return;
   }
 
@@ -620,6 +674,7 @@ app.addEventListener('submit', async (event) => {
         method: 'POST',
         body: JSON.stringify({
           name: formData.get('name'),
+          playerId: formData.get('playerId'),
           amount: formData.get('amount'),
           eventPassword: formData.get('eventPassword')
         })
