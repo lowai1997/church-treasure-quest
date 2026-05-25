@@ -290,7 +290,7 @@ h1 {
 .app-shell {
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -589,6 +589,18 @@ h1 {
   font-weight: 800;
 }
 
+.pet-admin-item {
+  grid-template-columns: 1fr 74px 88px auto;
+}
+
+.pet-admin-item input {
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
 .trade-form {
   display: grid;
   gap: 8px;
@@ -642,6 +654,12 @@ h1 {
   gap: 12px;
 }
 
+.boss-grid,
+.pet-grid {
+  display: grid;
+  gap: 12px;
+}
+
 .boss-health {
   height: 22px;
   overflow: hidden;
@@ -681,6 +699,20 @@ h1 {
   display: grid;
 }
 
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--blue-800);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+}
+
 .participant-list {
   display: grid;
   gap: 8px;
@@ -699,6 +731,25 @@ h1 {
   color: var(--blue-950);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pet-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.pet-card strong {
+  color: var(--blue-950);
+}
+
+.pet-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .admin-controls {
@@ -843,7 +894,7 @@ h1 {
   z-index: 10;
   width: min(100%, 460px);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   background: rgba(255, 253, 247, 0.96);
@@ -855,12 +906,12 @@ h1 {
 
 .nav-button {
   min-width: 0;
-  min-height: 56px;
+  min-height: 50px;
   color: var(--blue-800);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 900;
 }
 
@@ -941,5 +992,9 @@ h1 {
 
   .rank-total {
     grid-column: 2;
+  }
+
+  .pet-admin-item {
+    grid-template-columns: 1fr;
   }
 }

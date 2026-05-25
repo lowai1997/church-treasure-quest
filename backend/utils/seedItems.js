@@ -1,11 +1,11 @@
 import Item from '../models/Item.js';
 
 export const rarityConfig = {
-  N: { label: '普通', weight: 50, power: 5, price: 100 },
-  R: { label: '稀有', weight: 25, power: 12, price: 250 },
-  S: { label: '超稀有', weight: 15, power: 25, price: 600 },
-  SS: { label: '傳說', weight: 8, power: 55, price: 1400 },
-  SSS: { label: '神話', weight: 2, power: 120, price: 3200 }
+  N: { label: '普通', weight: 50, power: 5, price: 50 },
+  R: { label: '稀有', weight: 25, power: 12, price: 100 },
+  S: { label: '超稀有', weight: 15, power: 25, price: 200 },
+  SS: { label: '傳說', weight: 8, power: 55, price: 500 },
+  SSS: { label: '神話', weight: 2, power: 120, price: 1000 }
 };
 
 const rawItems = [

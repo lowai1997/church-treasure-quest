@@ -23,9 +23,19 @@ const bossBattleSchema = new mongoose.Schema(
       unique: true,
       default: 'world'
     },
+    slot: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     name: {
       type: String,
-      default: '世界怪獸'
+      default: '討伐怪獸'
+    },
+    intensity: {
+      type: Number,
+      default: 1,
+      min: 1
     },
     maxHp: {
       type: Number,

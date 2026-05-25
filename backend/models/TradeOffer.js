@@ -26,6 +26,10 @@ const tradeItemSnapshotSchema = new mongoose.Schema(
     power: {
       type: Number,
       default: 0
+    },
+    upgradeLevel: {
+      type: Number,
+      default: 0
     }
   },
   { _id: false }
@@ -49,7 +53,7 @@ const tradeOfferSchema = new mongoose.Schema(
     },
     requestedInventoryId: {
       type: String,
-      required: true
+      default: ''
     },
     offeredItem: {
       type: tradeItemSnapshotSchema,
@@ -57,7 +61,7 @@ const tradeOfferSchema = new mongoose.Schema(
     },
     requestedItem: {
       type: tradeItemSnapshotSchema,
-      required: true
+      default: null
     },
     status: {
       type: String,

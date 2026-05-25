@@ -6,12 +6,34 @@ import { requireRole, verifyToken } from '../middleware/auth.js';
 import { rarityConfig } from '../utils/seedItems.js';
 
 const router = express.Router();
-const mysteryBoxPrice = 50;
-const gearSellRate = 0.5;
-const lowRaritySellValues = {
-  N: 20,
-  R: 40
+const mysteryBoxPrice = 100;
+const gearSellValues = {
+  N: 30,
+  R: 50,
+  S: 100,
+  SS: 250,
+  SSS: 500
 };
+const upgradeCost = 50;
+const maxUpgradeLevel = 3;
+const upgradePowerGain = 10;
+const feedPetCost = 50;
+const petPowerGain = 10;
+const unlockPetSlotCost = 1000;
+const maxPetSlots = 3;
+
+const petCatalog = [
+  { petId: 'light-dragon', name: '光之幼龍', type: 'dragon', basePower: 20 },
+  { petId: 'faith-eagle', name: '信心天鷹', type: 'eagle', basePower: 20 },
+  { petId: 'life-green-bird', name: '生命綠靈鳥', type: 'bird', basePower: 20 },
+  { petId: 'holy-fire-lion', name: '神聖火獅', type: 'lion', basePower: 20 },
+  { petId: 'shadow-deer', name: '暗影守鹿', type: 'deer', basePower: 20 },
+  { petId: 'glory-wolf', name: '榮耀狼魂', type: 'wolf', basePower: 20 },
+  { petId: 'blessing-whale', name: '祝福星鯨', type: 'whale', basePower: 20 },
+  { petId: 'ether-flower', name: '以太花靈', type: 'spirit', basePower: 20 },
+  { petId: 'radiant-phoenix', name: '光耀鳳凰', type: 'phoenix', basePower: 20 },
+  { petId: 'lucky-cat', name: '幸運聖貓', type: 'cat', basePower: 20 }
+];
 
 const slotConfig = {
   weapon: { label: '武器', limit: 2 },
@@ -99,7 +121,8 @@ const createInventoryItem = (item) => ({
   type: item.type,
   rarity: item.rarity,
   price: item.price,
-  power: item.power
+  power: item.power,
+  upgradeLevel: 0
 });
 
 const createTradeItemSnapshot = (item) => ({
@@ -108,17 +131,36 @@ const createTradeItemSnapshot = (item) => ({
   type: item.type,
   rarity: item.rarity,
   price: item.price,
-  power: item.power
+  power: item.power,
+  upgradeLevel: item.upgradeLevel || 0
 });
 
 const getGearSellValue = (item) => {
-  const fixedValue = lowRaritySellValues[item.rarity];
+  return gearSellValues[item.rarity] ?? 0;
+};
 
-  if (fixedValue !== undefined) {
-    return fixedValue;
-  }
+const getPetDefinition = (petId) => petCatalog.find((pet) => pet.petId === petId);
 
-  return Math.max(0, Math.floor(Number(item.price || 0) * gearSellRate));
+const createPet = (petDefinition, overrides = {}) => {
+  const requestedLevel = Number(overrides.level || 1);
+  const requestedBasePower = Number(overrides.basePower ?? petDefinition.basePower);
+  const level = Number.isFinite(requestedLevel) ? Math.max(1, Math.floor(requestedLevel)) : 1;
+  const basePower = Number.isFinite(requestedBasePower) ? Math.max(0, Math.floor(requestedBasePower)) : petDefinition.basePower;
+  const requestedPower = Number(overrides.power ?? basePower + (level - 1) * petPowerGain);
+  const power = Number.isFinite(requestedPower) ? Math.max(basePower, Math.floor(requestedPower)) : basePower;
+
+  return {
+    petId: petDefinition.petId,
+    name: overrides.name || petDefinition.name,
+    type: overrides.type || petDefinition.type,
+    level,
+    basePower,
+    power
+  };
+};
+
+const getUpgradeSuccessRate = (currentLevel) => {
+  return Math.max(0.1, 1 - (Number(currentLevel || 0) + 1) * 0.1);
 };
 
 const unequipInventoryId = (player, inventoryId) => {
@@ -346,6 +388,207 @@ router.post('/unequipItem', verifyToken, async (req, res, next) => {
   }
 });
 
+router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const { inventoryId } = req.body;
+    const player = await Player.findById(req.user._id);
+    await ensurePlayerEquipment(player);
+
+    const inventoryItem = player.items.find((item) => item.inventoryId === inventoryId);
+
+    if (!inventoryItem) {
+      return res.status(404).json({ message: '找不到此裝備。' });
+    }
+
+    if (typeToSlot[inventoryItem.type] !== 'weapon') {
+      return res.status(400).json({ message: '只有武器可以升級。' });
+    }
+
+    if (Number(inventoryItem.upgradeLevel || 0) >= maxUpgradeLevel) {
+      return res.status(400).json({ message: '此武器已達 +3 上限。' });
+    }
+
+    if (player.gold < upgradeCost) {
+      return res.status(400).json({ message: '金幣不足，無法升級武器。' });
+    }
+
+    const successRate = getUpgradeSuccessRate(inventoryItem.upgradeLevel);
+    const success = Math.random() < successRate;
+    player.gold -= upgradeCost;
+
+    if (success) {
+      inventoryItem.upgradeLevel = Number(inventoryItem.upgradeLevel || 0) + 1;
+      inventoryItem.power = Number(inventoryItem.power || 0) + upgradePowerGain;
+    }
+
+    player.recalculatePower();
+    await player.save();
+
+    return res.json({
+      message: success
+        ? `升級成功，${inventoryItem.name} 已成為 +${inventoryItem.upgradeLevel}。`
+        : `升級失敗，成功率為 ${Math.round(successRate * 100)}%。`,
+      success,
+      successRate,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/petCatalog', verifyToken, async (req, res) => {
+  return res.json({ pets: petCatalog });
+});
+
+router.post('/adoptPet', verifyToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const petDefinition = getPetDefinition(req.body.petId);
+
+    if (!petDefinition) {
+      return res.status(404).json({ message: '找不到此寵物。' });
+    }
+
+    const player = await Player.findById(req.user._id);
+
+    if (player.pets.length >= player.petSlots) {
+      return res.status(400).json({ message: '寵物欄位已滿，請先解鎖更多欄位。' });
+    }
+
+    player.pets.push(createPet(petDefinition));
+    player.recalculatePower();
+    await player.save();
+
+    return res.json({
+      message: `已領養 ${petDefinition.name}。`,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/feedPet', verifyToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const player = await Player.findById(req.user._id);
+    const pet = player.pets.find((item) => item.petInstanceId === req.body.petInstanceId);
+
+    if (!pet) {
+      return res.status(404).json({ message: '找不到此寵物。' });
+    }
+
+    if (player.gold < feedPetCost) {
+      return res.status(400).json({ message: '金幣不足，無法餵食寵物。' });
+    }
+
+    player.gold -= feedPetCost;
+    pet.level = Number(pet.level || 1) + 1;
+    pet.power = Number(pet.power || 0) + petPowerGain;
+    player.recalculatePower();
+    await player.save();
+
+    return res.json({
+      message: `${pet.name} 升到 Lv.${pet.level}。`,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/unlockPetSlot', verifyToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const player = await Player.findById(req.user._id);
+
+    if (player.petSlots >= maxPetSlots) {
+      return res.status(400).json({ message: '寵物欄位已全部解鎖。' });
+    }
+
+    if (player.gold < unlockPetSlotCost) {
+      return res.status(400).json({ message: '金幣不足，無法解鎖寵物欄位。' });
+    }
+
+    player.gold -= unlockPetSlotCost;
+    player.petSlots += 1;
+    await player.save();
+
+    return res.json({
+      message: `已解鎖第 ${player.petSlots} 個寵物欄位。`,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/teacher/pets/add', verifyToken, requireRole('teacher'), async (req, res, next) => {
+  try {
+    const petDefinition = getPetDefinition(req.body.petId);
+
+    if (!petDefinition) {
+      return res.status(404).json({ message: '找不到此寵物。' });
+    }
+
+    const player = await Player.findOne({ _id: req.body.playerId, role: 'student' });
+
+    if (!player) {
+      return res.status(404).json({ message: '找不到此團員玩家。' });
+    }
+
+    if (player.pets.length >= maxPetSlots) {
+      return res.status(400).json({ message: '此團員的寵物欄位已滿。' });
+    }
+
+    player.petSlots = Math.max(player.petSlots, Math.min(maxPetSlots, player.pets.length + 1));
+    player.pets.push(createPet(petDefinition, req.body));
+    player.recalculatePower();
+    await player.save();
+
+    return res.json({
+      message: `已為 ${player.name} 新增 ${petDefinition.name}。`,
+      managedPlayer: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/teacher/pets/update', verifyToken, requireRole('teacher'), async (req, res, next) => {
+  try {
+    const player = await Player.findOne({ _id: req.body.playerId, role: 'student' });
+
+    if (!player) {
+      return res.status(404).json({ message: '找不到此團員玩家。' });
+    }
+
+    const pet = player.pets.find((item) => item.petInstanceId === req.body.petInstanceId);
+
+    if (!pet) {
+      return res.status(404).json({ message: '找不到此寵物。' });
+    }
+
+    if (req.body.level !== undefined) {
+      const level = Number(req.body.level);
+      pet.level = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : pet.level;
+    }
+
+    if (req.body.power !== undefined) {
+      const power = Number(req.body.power);
+      pet.power = Number.isFinite(power) ? Math.max(0, Math.floor(power)) : pet.power;
+    }
+
+    player.recalculatePower();
+    await player.save();
+
+    return res.json({
+      message: `已更新 ${player.name} 的寵物。`,
+      managedPlayer: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get('/tradePlayers', verifyToken, requireRole('student'), async (req, res, next) => {
   try {
     const players = await Player.find({
@@ -390,10 +633,10 @@ router.get('/trades', verifyToken, requireRole('student'), async (req, res, next
 
 router.post('/trades', verifyToken, requireRole('student'), async (req, res, next) => {
   try {
-    const { toPlayerId, offeredInventoryId, requestedInventoryId } = req.body;
+    const { toPlayerId, offeredInventoryId } = req.body;
 
-    if (!toPlayerId || !offeredInventoryId || !requestedInventoryId) {
-      return res.status(400).json({ message: '請選擇要交換的雙方裝備。' });
+    if (!toPlayerId || !offeredInventoryId) {
+      return res.status(400).json({ message: '請選擇交換對象與你要拿出的裝備。' });
     }
 
     if (toPlayerId === req.user._id.toString()) {
@@ -412,37 +655,24 @@ router.post('/trades', verifyToken, requireRole('student'), async (req, res, nex
     await Promise.all([ensurePlayerEquipment(fromPlayer), ensurePlayerEquipment(toPlayer)]);
 
     const offeredItem = fromPlayer.items.find((item) => item.inventoryId === offeredInventoryId);
-    const requestedItem = toPlayer.items.find((item) => item.inventoryId === requestedInventoryId);
-
     if (!offeredItem) {
       return res.status(404).json({ message: '找不到你要拿來交換的裝備。' });
     }
 
-    if (!requestedItem) {
-      return res.status(404).json({ message: '找不到對方的交換裝備。' });
-    }
-
     const existingTrade = await TradeOffer.findOne({
       status: 'pending',
-      $or: [
-        { offeredInventoryId },
-        { requestedInventoryId: offeredInventoryId },
-        { offeredInventoryId: requestedInventoryId },
-        { requestedInventoryId }
-      ]
+      $or: [{ offeredInventoryId }, { requestedInventoryId: offeredInventoryId }]
     });
 
     if (existingTrade) {
-      return res.status(400).json({ message: '其中一件裝備已有待處理的交換申請。' });
+      return res.status(400).json({ message: '此裝備已有待處理的交換申請。' });
     }
 
     const trade = await TradeOffer.create({
       fromPlayer: fromPlayer._id,
       toPlayer: toPlayer._id,
       offeredInventoryId,
-      requestedInventoryId,
-      offeredItem: createTradeItemSnapshot(offeredItem),
-      requestedItem: createTradeItemSnapshot(requestedItem)
+      offeredItem: createTradeItemSnapshot(offeredItem)
     });
 
     await trade.populate('fromPlayer', 'name');
@@ -459,6 +689,12 @@ router.post('/trades', verifyToken, requireRole('student'), async (req, res, nex
 
 router.post('/trades/:tradeId/accept', verifyToken, requireRole('student'), async (req, res, next) => {
   try {
+    const { counterInventoryId } = req.body;
+
+    if (!counterInventoryId) {
+      return res.status(400).json({ message: '請選擇你要交換出去的裝備。' });
+    }
+
     const trade = await TradeOffer.findOne({
       _id: req.params.tradeId,
       toPlayer: req.user._id,
@@ -484,7 +720,7 @@ router.post('/trades/:tradeId/accept', verifyToken, requireRole('student'), asyn
     await Promise.all([ensurePlayerEquipment(fromPlayer), ensurePlayerEquipment(toPlayer)]);
 
     const offeredItem = fromPlayer.items.find((item) => item.inventoryId === trade.offeredInventoryId);
-    const requestedItem = toPlayer.items.find((item) => item.inventoryId === trade.requestedInventoryId);
+    const requestedItem = toPlayer.items.find((item) => item.inventoryId === counterInventoryId);
 
     if (!offeredItem || !requestedItem) {
       trade.status = 'cancelled';
@@ -493,20 +729,32 @@ router.post('/trades/:tradeId/accept', verifyToken, requireRole('student'), asyn
       return res.status(400).json({ message: '其中一件裝備已不存在，交換申請已取消。' });
     }
 
+    const counterConflict = await TradeOffer.findOne({
+      _id: { $ne: trade._id },
+      status: 'pending',
+      $or: [{ offeredInventoryId: counterInventoryId }, { requestedInventoryId: counterInventoryId }]
+    });
+
+    if (counterConflict) {
+      return res.status(400).json({ message: '你選擇的裝備已有待處理交換申請。' });
+    }
+
     const offeredSnapshot = offeredItem.toObject ? offeredItem.toObject() : { ...offeredItem };
     const requestedSnapshot = requestedItem.toObject ? requestedItem.toObject() : { ...requestedItem };
 
     unequipInventoryId(fromPlayer, trade.offeredInventoryId);
-    unequipInventoryId(toPlayer, trade.requestedInventoryId);
+    unequipInventoryId(toPlayer, counterInventoryId);
 
     fromPlayer.items = fromPlayer.items.filter((item) => item.inventoryId !== trade.offeredInventoryId);
-    toPlayer.items = toPlayer.items.filter((item) => item.inventoryId !== trade.requestedInventoryId);
+    toPlayer.items = toPlayer.items.filter((item) => item.inventoryId !== counterInventoryId);
     fromPlayer.items.push(requestedSnapshot);
     toPlayer.items.push(offeredSnapshot);
     fromPlayer.recalculatePower();
     toPlayer.recalculatePower();
 
     trade.status = 'accepted';
+    trade.requestedInventoryId = counterInventoryId;
+    trade.requestedItem = createTradeItemSnapshot(requestedItem);
     trade.resolvedAt = new Date();
 
     await Promise.all([fromPlayer.save(), toPlayer.save(), trade.save()]);
@@ -517,8 +765,8 @@ router.post('/trades/:tradeId/accept', verifyToken, requireRole('student'), asyn
         $or: [
           { offeredInventoryId: trade.offeredInventoryId },
           { requestedInventoryId: trade.offeredInventoryId },
-          { offeredInventoryId: trade.requestedInventoryId },
-          { requestedInventoryId: trade.requestedInventoryId }
+          { offeredInventoryId: counterInventoryId },
+          { requestedInventoryId: counterInventoryId }
         ]
       },
       {

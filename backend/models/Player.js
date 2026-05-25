@@ -23,6 +23,12 @@ const playerItemSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    upgradeLevel: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3
+    },
     rarity: {
       type: String,
       enum: ['N', 'R', 'S', 'SS', 'SSS'],
@@ -32,6 +38,48 @@ const playerItemSchema = new mongoose.Schema(
       type: String,
       required: true,
       default: () => new mongoose.Types.ObjectId().toString()
+    },
+    acquiredAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
+  { _id: false }
+);
+
+const petSchema = new mongoose.Schema(
+  {
+    petInstanceId: {
+      type: String,
+      required: true,
+      default: () => new mongoose.Types.ObjectId().toString()
+    },
+    petId: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    type: {
+      type: String,
+      required: true
+    },
+    level: {
+      type: Number,
+      default: 1,
+      min: 1
+    },
+    basePower: {
+      type: Number,
+      default: 20,
+      min: 0
+    },
+    power: {
+      type: Number,
+      default: 20,
+      min: 0
     },
     acquiredAt: {
       type: Date,
@@ -68,6 +116,16 @@ const playerSchema = new mongoose.Schema(
     },
     items: {
       type: [playerItemSchema],
+      default: []
+    },
+    petSlots: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 3
+    },
+    pets: {
+      type: [petSchema],
       default: []
     },
     equipped: {
@@ -112,6 +170,17 @@ playerSchema.pre('validate', function ensureLegacyInventoryIds(next) {
     if (!item.inventoryId) {
       item.inventoryId = new mongoose.Types.ObjectId().toString();
     }
+    if (item.upgradeLevel === undefined || item.upgradeLevel === null) {
+      item.upgradeLevel = 0;
+    }
+  });
+  this.pets.forEach((pet) => {
+    if (!pet.petInstanceId) {
+      pet.petInstanceId = new mongoose.Types.ObjectId().toString();
+    }
+    if (pet.power === undefined || pet.power === null) {
+      pet.power = Number(pet.basePower || 0) + Math.max(0, Number(pet.level || 1) - 1) * 10;
+    }
   });
   next();
 });
@@ -137,6 +206,17 @@ playerSchema.methods.ensureInventoryIds = function ensureInventoryIds() {
       item.inventoryId = new mongoose.Types.ObjectId().toString();
       changed = true;
     }
+    if (item.upgradeLevel === undefined || item.upgradeLevel === null) {
+      item.upgradeLevel = 0;
+      changed = true;
+    }
+  });
+
+  this.pets.forEach((pet) => {
+    if (!pet.petInstanceId) {
+      pet.petInstanceId = new mongoose.Types.ObjectId().toString();
+      changed = true;
+    }
   });
 
   return changed;
@@ -144,15 +224,23 @@ playerSchema.methods.ensureInventoryIds = function ensureInventoryIds() {
 
 playerSchema.methods.recalculatePower = function recalculatePower() {
   const equippedIds = new Set(Object.values(this.equipped || {}).flat());
-  this.power = this.items.reduce((total, item) => {
+  const equipmentPower = this.items.reduce((total, item) => {
     return equippedIds.has(item.inventoryId) ? total + Number(item.power || 0) : total;
   }, 0);
+  const petPower = (this.pets || []).reduce((total, pet) => total + Number(pet.power || 0), 0);
+
+  this.power = equipmentPower + petPower;
   return this.power;
 };
 
 playerSchema.methods.toSafeObject = function toSafeObject() {
   const player = this.toObject({ versionKey: false });
   delete player.password;
+  const equippedIds = new Set(Object.values(player.equipped || {}).flat());
+  player.equipmentPower = (player.items || []).reduce((total, item) => {
+    return equippedIds.has(item.inventoryId) ? total + Number(item.power || 0) : total;
+  }, 0);
+  player.petPower = (player.pets || []).reduce((total, pet) => total + Number(pet.power || 0), 0);
   player.totalPower = Number(player.power || 0);
   return player;
 };

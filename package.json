@@ -8,7 +8,7 @@
     "dev": "node --watch backend/server.js",
     "start": "node backend/server.js",
     "seed": "node backend/seed.js",
-    "check": "node --check backend/server.js && node --check backend/routes/authRoutes.js && node --check backend/routes/playerRoutes.js && node --check backend/routes/adminRoutes.js && node --check backend/routes/bossRoutes.js && node --check backend/models/BossBattle.js && node --check backend/models/TradeOffer.js && node --check frontend/script.js"
+    "check": "node --check backend/server.js && node --check backend/routes/authRoutes.js && node --check backend/routes/playerRoutes.js && node --check backend/routes/adminRoutes.js && node --check backend/routes/bossRoutes.js && node --check backend/models/BossBattle.js && node --check backend/models/BossConfig.js && node --check backend/models/TradeOffer.js && node --check frontend/script.js"
   },
   "engines": {
     "node": ">=18"

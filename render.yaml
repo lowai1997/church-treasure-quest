@@ -15,7 +15,7 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: BOX_PRICE
-        value: 50
+        value: 100
       - key: TEACHER_REGISTER_KEY
         value: Amen2026
       - key: WORLD_BOSS_MAX_HP
