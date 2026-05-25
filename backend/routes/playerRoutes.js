@@ -4,6 +4,7 @@ import Player from '../models/Player.js';
 import TradeOffer from '../models/TradeOffer.js';
 import { requireRole, verifyToken } from '../middleware/auth.js';
 import { rarityConfig } from '../utils/seedItems.js';
+import { drawBibleQuestion, isBibleAnswerCorrect } from '../utils/bibleQuestions.js';
 
 const router = express.Router();
 const mysteryBoxPrice = 100;
@@ -17,10 +18,13 @@ const gearSellValues = {
 const upgradeCost = 50;
 const maxUpgradeLevel = 9;
 const upgradePowerGain = 10;
+const rarityUpgradeCost = 50;
 const feedPetCost = 50;
 const petPowerGain = 10;
 const unlockPetSlotCost = 1000;
 const maxPetSlots = 3;
+const avatarOptions = ['male-1', 'male-2', 'female-1', 'female-2'];
+const raritySteps = ['S', 'SS', 'SSS'];
 
 const petCatalog = [
   { petId: 'light-dragon', name: '光之幼龍', type: 'dragon', basePower: 20 },
@@ -163,6 +167,23 @@ const getUpgradeSuccessRate = (currentLevel) => {
   return Math.max(0.1, 1 - (Number(currentLevel || 0) + 1) * 0.1);
 };
 
+const getRarityUpgradeSuccessRate = (item) => {
+  return Math.max(0.05, getUpgradeSuccessRate(item.upgradeLevel) / 2);
+};
+
+const getNextRarity = (rarity) => {
+  const currentIndex = raritySteps.indexOf(rarity);
+  return currentIndex >= 0 && currentIndex < raritySteps.length - 1 ? raritySteps[currentIndex + 1] : null;
+};
+
+const getRarityPowerGain = (currentRarity, nextRarity) => {
+  return Math.max(0, Number(rarityConfig[nextRarity]?.power || 0) - Number(rarityConfig[currentRarity]?.power || 0));
+};
+
+const normalizeAvatar = (avatar) => {
+  return avatarOptions.includes(avatar) ? avatar : 'male-1';
+};
+
 const unequipInventoryId = (player, inventoryId) => {
   Object.keys(slotConfig).forEach((slot) => {
     player.equipped[slot] = (player.equipped[slot] || []).filter((id) => id !== inventoryId);
@@ -191,6 +212,21 @@ router.get('/getItems', verifyToken, async (req, res, next) => {
     return res.json({
       items,
       refreshDate: new Date().toISOString().slice(0, 10)
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/avatar', verifyToken, async (req, res, next) => {
+  try {
+    const player = await Player.findById(req.user._id);
+    player.avatar = normalizeAvatar(req.body.avatar);
+    await player.save();
+
+    return res.json({
+      message: '角色徽章已更新。',
+      player: player.toSafeObject()
     });
   } catch (error) {
     return next(error);
@@ -390,7 +426,7 @@ router.post('/unequipItem', verifyToken, async (req, res, next) => {
 
 router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res, next) => {
   try {
-    const { inventoryId } = req.body;
+    const { inventoryId, mode = 'level' } = req.body;
     const player = await Player.findById(req.user._id);
     await ensurePlayerEquipment(player);
 
@@ -400,16 +436,47 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
       return res.status(404).json({ message: '找不到此裝備。' });
     }
 
-    if (typeToSlot[inventoryItem.type] !== 'weapon') {
-      return res.status(400).json({ message: '只有武器可以升級。' });
+    if (mode === 'rarity') {
+      const nextRarity = getNextRarity(inventoryItem.rarity);
+
+      if (!nextRarity) {
+        return res.status(400).json({ message: '只有 S 或 SS 裝備可以突破稀有度。' });
+      }
+
+      if (player.gold < rarityUpgradeCost) {
+        return res.status(400).json({ message: '金幣不足，無法突破稀有度。' });
+      }
+
+      const successRate = getRarityUpgradeSuccessRate(inventoryItem);
+      const success = Math.random() < successRate;
+      const previousRarity = inventoryItem.rarity;
+      player.gold -= rarityUpgradeCost;
+
+      if (success) {
+        inventoryItem.rarity = nextRarity;
+        inventoryItem.power = Number(inventoryItem.power || 0) + getRarityPowerGain(previousRarity, nextRarity);
+      }
+
+      player.recalculatePower();
+      await player.save();
+
+      return res.json({
+        message: success
+          ? `突破成功，${inventoryItem.name} 已提升至 ${nextRarity}。`
+          : `突破失敗，成功率為 ${Math.round(successRate * 100)}%。`,
+        success,
+        successRate,
+        mode: 'rarity',
+        player: player.toSafeObject()
+      });
     }
 
     if (Number(inventoryItem.upgradeLevel || 0) >= maxUpgradeLevel) {
-      return res.status(400).json({ message: `此武器已達 +${maxUpgradeLevel} 上限。` });
+      return res.status(400).json({ message: `此裝備已達 +${maxUpgradeLevel} 上限。` });
     }
 
     if (player.gold < upgradeCost) {
-      return res.status(400).json({ message: '金幣不足，無法升級武器。' });
+      return res.status(400).json({ message: '金幣不足，無法升級裝備。' });
     }
 
     const successRate = getUpgradeSuccessRate(inventoryItem.upgradeLevel);
@@ -430,6 +497,7 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
         : `升級失敗，成功率為 ${Math.round(successRate * 100)}%。`,
       success,
       successRate,
+      mode: 'level',
       player: player.toSafeObject()
     });
   } catch (error) {
@@ -439,6 +507,10 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
 
 router.get('/petCatalog', verifyToken, async (req, res) => {
   return res.json({ pets: petCatalog });
+});
+
+router.get('/petQuestion', verifyToken, requireRole('student'), async (req, res) => {
+  return res.json({ question: drawBibleQuestion() });
 });
 
 router.post('/adoptPet', verifyToken, requireRole('student'), async (req, res, next) => {
@@ -479,6 +551,10 @@ router.post('/feedPet', verifyToken, requireRole('student'), async (req, res, ne
 
     if (player.gold < feedPetCost) {
       return res.status(400).json({ message: '金幣不足，無法餵食寵物。' });
+    }
+
+    if (!isBibleAnswerCorrect(req.body.questionId, req.body.answer)) {
+      return res.status(400).json({ message: '答案不正確，寵物升級未成功。' });
     }
 
     player.gold -= feedPetCost;

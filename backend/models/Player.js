@@ -109,6 +109,11 @@ const playerSchema = new mongoose.Schema(
       enum: ['student', 'teacher'],
       default: 'student'
     },
+    avatar: {
+      type: String,
+      enum: ['male-1', 'male-2', 'female-1', 'female-2'],
+      default: 'male-1'
+    },
     gold: {
       type: Number,
       default: 0,

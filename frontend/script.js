@@ -4,6 +4,7 @@ const state = {
   view: 'shop',
   authMode: 'login',
   authRole: 'student',
+  authAvatar: localStorage.getItem('ctqAuthAvatar') || 'male-1',
   items: [],
   storeDate: '',
   rank: [],
@@ -17,6 +18,8 @@ const state = {
   petCatalog: [],
   inventorySort: localStorage.getItem('ctqInventorySort') || 'rarity-desc',
   addGoldAmount: 100,
+  boxReveal: null,
+  petQuiz: null,
   busy: false
 };
 
@@ -38,6 +41,14 @@ const feedPetCost = 50;
 const petPowerGain = 10;
 const unlockPetSlotCost = 1000;
 const maxPetSlots = 3;
+const raritySteps = ['S', 'SS', 'SSS'];
+const rarityLabels = { N: '普通', R: '稀有', S: '超稀有', SS: '傳說', SSS: '神話' };
+const avatarOptions = [
+  { id: 'male-1', label: '星殿少年' },
+  { id: 'male-2', label: '書卷少年' },
+  { id: 'female-1', label: '羽光少女' },
+  { id: 'female-2', label: '寶石少女' }
+];
 
 const sortInventoryItems = (items = []) => {
   return [...items].sort((left, right) => {
@@ -119,48 +130,135 @@ const itemIcon = () => `
   </svg>
 `;
 
-const slotIcon = (type) => {
+const weaponIconFor = (name = '') => {
+  if (/[弓弩矢]/.test(name)) {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M31 7c-9 6-12 26 0 34" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3.2"/>
+        <path d="M31 7c6 8 6 26 0 34M31 8 15 40M16 19l10 10M11 41l8-3 3-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8"/>
+        <path d="M34 19l3 2 3-2-1 4 3 3-4 .3-2 3-1.4-3.5-3.6-.8 3-2.4V19Z" fill="currentColor"/>
+      </svg>
+    `;
+  }
+
+  if (/[杖]/.test(name)) {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M31 6 13 42" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3.2"/>
+        <path d="M33 5 38 10 33 15 28 10 33 5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.8"/>
+        <path d="M33 10h8M33 10l-5-7M20 27l5 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.4"/>
+        <path d="M10 37c4-1 7 1 9 5-5-1-8-2-9-5Z" fill="currentColor" opacity=".45"/>
+      </svg>
+    `;
+  }
+
+  if (/[矛槍戟]/.test(name)) {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M31 5 41 15 34 18 28 12 31 5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.8"/>
+        <path d="M34 14 11 37M15 33l7 7M24 24l5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M11 37 7 43l6-4" fill="currentColor"/>
+      </svg>
+    `;
+  }
+
+  if (/[斧]/.test(name)) {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M21 10c7-3 15 0 18 7-5 2-10 3-15 1l-4-4 1-4Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.8"/>
+        <path d="M25 17 10 41M16 31l7 5M29 14l5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M31.5 4.5 43 16 18.6 40.4l-8.1 2.1 2.1-8.1L37 10 31.5 4.5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+      <path d="m27 16 5 5M10 34l4 4M7 29l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+      <path d="M36 6l2 4 4 .5-3 2.8.8 4-3.8-2-3.6 2 .7-4-3-2.8 4.2-.5 1.7-4Z" fill="currentColor"/>
+    </svg>
+  `;
+};
+
+const slotIcon = (type, name = '') => {
   const slotKey = typeToSlot[type] || type;
   const icons = {
-    weapon: `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M31.5 4.5 43 16 18.6 40.4l-8.1 2.1 2.1-8.1L37 10 31.5 4.5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="m27 16 5 5M10 34l4 4M7 29l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-      </svg>
-    `,
+    weapon: weaponIconFor(name),
     helmet: `
       <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M9 25c0-10 6.4-17 15-17s15 7 15 17v10c0 3-2 5-5 5H14c-3 0-5-2-5-5V25Z" fill="none" stroke="currentColor" stroke-width="3"/>
-        <path d="M11 27h26M18 40V27M30 40V27M18 13c4 4 8 4 12 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M9 26c0-10 6.4-17 15-17s15 7 15 17v9c0 3-2 5-5 5H14c-3 0-5-2-5-5v-9Z" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M12 27h24M18 40V27M30 40V27M18 14c4 4 8 4 12 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M24 4l2 4 4 .5-3 2.8.8 4-3.8-2-3.8 2 .8-4-3-2.8 4-.5 2-4Z" fill="currentColor"/>
       </svg>
     `,
     armor: `
       <svg viewBox="0 0 48 48" aria-hidden="true">
         <path d="M14 8h20l7 8-5 7-3-2v19H15V21l-3 2-5-7 7-8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M20 10c.6 4 2 6 4 7 2-1 3.4-3 4-7M24 18v20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M20 10c.6 4 2 6 4 7 2-1 3.4-3 4-7M24 18v20M18 29h12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M24 22 29 28 24 36 19 28 24 22Z" fill="currentColor" opacity=".35"/>
       </svg>
     `,
     pants: `
       <svg viewBox="0 0 48 48" aria-hidden="true">
         <path d="M15 7h18l3 34h-9l-3-19-3 19h-9l3-34Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M16 14h16M24 8v14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M16 14h16M24 8v14M17 33c3-2 5-2 8 0M26 33c3-2 5-2 8 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
       </svg>
     `,
     shoes: `
       <svg viewBox="0 0 48 48" aria-hidden="true">
         <path d="M11 27c5 3 11 2 15-5l5 8 8 3v6H8v-5l3-7Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M16 29h9M28 31h6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M16 29h9M28 31h6M13 22c3-1 5-3 7-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
+        <path d="M35 19l1.5 3 3.5.4-2.5 2.4.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.5-2.4 3.5-.4 1.5-3Z" fill="currentColor"/>
       </svg>
     `,
     accessory: `
       <svg viewBox="0 0 48 48" aria-hidden="true">
         <path d="M24 6 35 17 24 42 13 17 24 6Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
         <path d="M13 17h22M19 17l5 25 5-25M18 11h12" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
+        <path d="M38 7l1.6 3.2 3.4.5-2.5 2.5.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.5-2.5 3.4-.5L38 7Z" fill="currentColor"/>
       </svg>
     `
   };
 
   return icons[slotKey] || itemIcon();
+};
+
+const avatarIcon = (avatar = 'male-1') => {
+  const palette = {
+    'male-1': ['#d5f0ff', '#ded7ff', '#d8b86f'],
+    'male-2': ['#fff1d4', '#d5f0ff', '#b9adf2'],
+    'female-1': ['#f9dce8', '#ded7ff', '#d8b86f'],
+    'female-2': ['#ded7ff', '#fff1d4', '#9fd7f1']
+  }[avatar] || ['#d5f0ff', '#ded7ff', '#d8b86f'];
+  const hairPath =
+    avatar === 'female-1'
+      ? 'M13 24c0-8 5-15 11-15s11 7 11 15v13c-3 3-19 3-22 0V24Z'
+      : avatar === 'female-2'
+      ? 'M12 25c0-9 5-16 12-16s12 7 12 16c0 6-3 12-12 12S12 31 12 25Z'
+      : 'M13 23c2-9 8-14 16-12 6 1 9 6 8 13-6-4-16-5-24-1Z';
+  const detail =
+    avatar === 'male-2'
+      ? '<path d="M12 36h24M16 34c4-5 12-5 16 0M18 40h12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/>'
+      : avatar === 'female-2'
+      ? '<path d="M24 32 29 38 24 44 19 38 24 32Z" fill="currentColor" opacity=".45"/>'
+      : '<path d="M35 7l1.5 3 3.5.4-2.5 2.4.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.5-2.4 3.5-.4L35 7Z" fill="currentColor"/>';
+
+  return `
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <defs>
+        <linearGradient id="avatar-${avatar}" x1="8" y1="6" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stop-color="${palette[0]}"/>
+          <stop offset=".55" stop-color="${palette[1]}"/>
+          <stop offset="1" stop-color="${palette[2]}"/>
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="21" fill="url(#avatar-${avatar})" opacity=".62"/>
+      <path d="${hairPath}" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8"/>
+      <circle cx="24" cy="25" r="8" fill="rgba(255,253,248,.86)" stroke="currentColor" stroke-width="2.4"/>
+      <path d="M20 25h.1M28 25h.1M21 30c2 1.4 4 1.4 6 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.4"/>
+      ${detail}
+    </svg>
+  `;
 };
 
 const navSymbol = (view) =>
@@ -323,7 +421,7 @@ const updateBossLiveHp = () => {
     }
 
     if (statusText && (hp <= 0 || timeLeft === 0)) {
-      statusText.textContent = hp <= 0 ? '已完成，正在更換目標' : '期限已到，旅程結算中';
+      statusText.textContent = hp <= 0 ? '已完成，正在更換目標' : '期限已到，攻佔結算中';
     }
   });
 };
@@ -351,6 +449,7 @@ const syncBossTimers = () => {
     }
 
     try {
+      await loadMe();
       await loadWorldBoss();
       renderShell();
     } catch (error) {
@@ -442,6 +541,10 @@ const renderAuth = () => {
                     <button class="role-button ${state.authRole === 'student' ? 'active' : ''}" type="button" data-auth-role="student">團員</button>
                     <button class="role-button ${state.authRole === 'teacher' ? 'active' : ''}" type="button" data-auth-role="teacher">導師</button>
                   </div>
+                  <div class="field avatar-field">
+                    <label>角色徽章</label>
+                    ${renderAvatarPicker(state.authAvatar, { mode: 'auth' })}
+                  </div>
                   <div class="field ${state.authRole === 'teacher' ? '' : 'is-hidden'}">
                     <label for="teacherKey">導師註冊金鑰</label>
                     <input id="teacherKey" name="teacherKey" placeholder="請輸入導師註冊金鑰" />
@@ -470,7 +573,7 @@ const renderShell = () => {
     <section class="app-shell">
       <header class="topbar">
         <div class="profile-plaque">
-          <div class="profile-avatar">${crestIcon()}</div>
+          <div class="profile-avatar">${avatarIcon(state.player.avatar || 'male-1')}</div>
           <div class="player-chip">
             <span class="player-name">${escapeHtml(state.player.name)}</span>
             <span class="player-meta">${roleText(state.player.role)} · 戰力 ${formatNumber(totalPower(state.player))}</span>
@@ -497,6 +600,8 @@ const renderShell = () => {
         ${navButton('boss', '挑戰')}
         ${navButton('rank', '排行')}
       </nav>
+      ${state.boxReveal ? renderBoxReveal() : ''}
+      ${state.petQuiz ? renderPetQuiz() : ''}
     </section>
   `;
   syncBossTimers();
@@ -508,6 +613,85 @@ const navButton = (view, label) => `
     <span class="nav-label">${label}</span>
   </button>
 `;
+
+const renderAvatarPicker = (selectedAvatar, { mode = 'auth' } = {}) => `
+  <div class="avatar-picker" aria-label="選擇角色徽章">
+    ${avatarOptions
+      .map(
+        (avatar) => `
+          <button
+            class="avatar-choice ${selectedAvatar === avatar.id ? 'active' : ''}"
+            type="button"
+            ${mode === 'auth' ? `data-auth-avatar="${avatar.id}"` : `data-action="update-avatar" data-avatar="${avatar.id}"`}
+            aria-pressed="${selectedAvatar === avatar.id ? 'true' : 'false'}"
+          >
+            <span class="avatar-choice-icon">${avatarIcon(avatar.id)}</span>
+            <span>${avatar.label}</span>
+          </button>
+        `
+      )
+      .join('')}
+  </div>
+`;
+
+const renderBoxReveal = () => {
+  const reward = state.boxReveal?.reward || {};
+  const rarity = reward.rarity || 'N';
+
+  return `
+    <div class="box-reveal" data-rarity="${escapeAttr(rarity)}" role="dialog" aria-modal="true" aria-label="神秘盒開箱結果">
+      <div class="reveal-stage">
+        <div class="reveal-stars" aria-hidden="true"></div>
+        <div class="reveal-box" aria-hidden="true">
+          <span class="box-lid"></span>
+          <span class="box-base"></span>
+          <span class="box-light"></span>
+        </div>
+        <div class="reveal-item">
+          <div class="item-icon">${slotIcon(reward.type, reward.name)}</div>
+          <span class="reveal-rarity">${escapeHtml(rarityLabels[rarity] || rarity)}</span>
+          <strong>${escapeHtml(reward.name || '神秘裝備')}</strong>
+          <span>${escapeHtml(reward.type || '裝備')} · 戰力 +${formatNumber(reward.power)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+const renderPetQuiz = () => {
+  const quiz = state.petQuiz?.question;
+
+  if (!quiz) {
+    return '';
+  }
+
+  return `
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="寵物升級問題">
+      <section class="quiz-modal card">
+        <div class="card-header">
+          <div>
+            <h3>寵物升級考驗</h3>
+            <p>答對後才會消耗金幣並提升寵物戰力。</p>
+          </div>
+          <button class="icon-button" type="button" data-action="cancel-pet-question" aria-label="關閉">關閉</button>
+        </div>
+        <strong class="quiz-question">${escapeHtml(quiz.question)}</strong>
+        <div class="quiz-options">
+          ${(quiz.options || [])
+            .map(
+              (option) => `
+                <button class="mini-button quiz-option" type="button" data-action="answer-pet-question" data-answer="${escapeAttr(option.key)}">
+                  <span>${escapeHtml(option.key)}</span>
+                  ${escapeHtml(option.text)}
+                </button>
+              `
+            )
+            .join('')}
+        </div>
+      </section>
+    </div>
+  `;
+};
 
 const renderCurrentView = () => {
   if (state.view === 'hunt') {
@@ -567,6 +751,16 @@ const renderShop = () => {
     <section class="card">
       <div class="card-header">
         <div>
+          <h3>角色徽章</h3>
+          <p>選擇你的隊伍代表圖示。</p>
+        </div>
+      </div>
+      ${renderAvatarPicker(state.player.avatar || 'male-1', { mode: 'profile' })}
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
           <h3>神秘盒</h3>
           <p>每次 ${formatNumber(mysteryBoxPrice)} 金幣，依照稀有度機率隨機獲得一件裝備。</p>
         </div>
@@ -614,7 +808,7 @@ const renderItemCard = (item) => {
 
   return `
     <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -660,7 +854,7 @@ const renderEquipment = () => {
   return `
     <section class="view-title">
       <h2>裝備管理</h2>
-      <p>可穿戴 2 聖器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。</p>
+      <p>可穿戴 2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。</p>
     </section>
 
     <section class="stats-grid" aria-label="裝備狀態">
@@ -736,7 +930,7 @@ const renderInventoryItem = (item, equippedIds) => {
 
   return `
     <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -1061,16 +1255,13 @@ const renderHuntBosses = () => {
   return `
     <section class="view-title">
       <h2>星光挑戰</h2>
-      <p>兩個世界之間有 25 步旅程。完成 Boss 挑戰會向光明深處前進，期限內未完成則旅程退回一格。</p>
+      <p>討伐 Boss 後會向敵陣前進，期限未完成則被攻佔一格。</p>
     </section>
 
     <section class="stats-grid" aria-label="挑戰狀態">
       <div class="stat-card"><span>旅程位置</span><strong>${formatNumber(state.bossConfig?.frontlineStep)} / ${formatNumber(state.bossConfig?.worldSteps)}</strong></div>
       <div class="stat-card"><span>已完成</span><strong>${formatNumber(state.bossConfig?.killCount)}</strong></div>
-      <div class="stat-card"><span>失守次數</span><strong>${formatNumber(state.bossConfig?.defenseLosses)}</strong></div>
-      <div class="stat-card"><span>Boss 強度</span><strong>${formatNumber(state.bossConfig?.intensity || 1)}x</strong></div>
-      <div class="stat-card"><span>基礎血量</span><strong>${formatNumber(state.bossConfig?.baseHp)}</strong></div>
-      <div class="stat-card"><span>期限</span><strong>${formatNumber(state.bossConfig?.bossDeadlineHours || 120)}小時</strong></div>
+      <div class="stat-card"><span>被攻佔</span><strong>${formatNumber(state.bossConfig?.defenseLosses)}</strong></div>
     </section>
 
     <section class="card campaign-card">
@@ -1082,7 +1273,7 @@ const renderHuntBosses = () => {
       </div>
       <div class="frontline-labels">
         <span>起點聖殿</span>
-        <span>星光深處</span>
+        <span>敵陣</span>
       </div>
       <div class="frontline-track" aria-label="兩個世界之間的 25 步星光旅程">
         ${renderCampaignTrack(state.bossConfig)}
@@ -1099,7 +1290,7 @@ const renderHuntBosses = () => {
             <div class="card-header">
               <div>
                 <h3>挑戰設定</h3>
-                <p>可調整已完成數、Boss 強度，並選擇是否立即重置三隻 Boss。</p>
+                <p>可調整已完成數、旅程位置，並選擇是否立即重置三隻 Boss。</p>
               </div>
             </div>
             <form id="boss-config-form" class="admin-controls">
@@ -1108,15 +1299,7 @@ const renderHuntBosses = () => {
                 <input id="killCount" name="killCount" type="number" min="0" step="1" value="${Number(state.bossConfig?.killCount || 0)}" />
               </div>
               <div class="field">
-                <label for="bossIntensity">Boss 強度</label>
-                <input id="bossIntensity" name="intensity" type="number" min="1" step="1" value="${Number(state.bossConfig?.intensity || 1)}" />
-              </div>
-              <div class="field">
-                <label for="bossDeadlineHours">Boss 時限（小時）</label>
-                <input id="bossDeadlineHours" name="bossDeadlineHours" type="number" min="1" step="1" value="${Number(state.bossConfig?.bossDeadlineHours || 120)}" />
-              </div>
-              <div class="field">
-                <label for="frontlineStep">旅程位置（0 起點聖殿 / 25 星光深處）</label>
+                <label for="frontlineStep">旅程位置（0 起點聖殿 / 25 敵陣）</label>
                 <input id="frontlineStep" name="frontlineStep" type="number" min="0" max="${Number(state.bossConfig?.worldSteps || 25)}" step="1" value="${Number(state.bossConfig?.frontlineStep ?? 13)}" />
               </div>
               <label class="check-row">
@@ -1139,14 +1322,13 @@ const renderHuntBosses = () => {
 const renderBossCard = (boss) => {
   const hp = getLiveBossHp(boss);
   const timeLeft = getBossTimeLeft(boss);
-  const estimate = getBossCompletionEstimate(boss);
   const defeated = hp <= 0 || Boolean(boss.defeatedAt);
   const bossStatus = defeated
     ? '已完成，正在更換目標'
     : timeLeft === 0
-      ? '期限已到，旅程結算中'
+      ? '期限已到，攻佔結算中'
       : Number(boss.totalPower || 0) > 0
-      ? `每秒 -${formatNumber(boss.totalPower)}`
+      ? '討伐進行中'
       : '等待團員加入';
 
   return `
@@ -1156,22 +1338,14 @@ const renderBossCard = (boss) => {
           <h3>${escapeHtml(boss.name)}</h3>
           <p data-boss-status="${escapeAttr(boss._id)}">${bossStatus}</p>
         </div>
-        <span class="price-pill">${formatNumber(boss.maxHp)} HP</span>
+        <span class="price-pill">參戰 ${formatNumber(boss.participantCount)}</span>
       </div>
       <div class="boss-health" aria-label="挑戰進度">
         <div class="boss-health-fill" data-boss-hp-bar="${escapeAttr(boss._id)}" style="width: ${bossHpPercent(boss)}%"></div>
       </div>
       <div class="boss-health-row">
-        <strong><span data-boss-hp="${escapeAttr(boss._id)}">${formatNumber(hp)}</span> / ${formatNumber(boss.maxHp)}</strong>
-        <span>${defeated ? '更換中' : `參戰 ${formatNumber(boss.participantCount)} 人`}</span>
-      </div>
-      <div class="boss-health-row">
-        <strong data-boss-deadline="${escapeAttr(boss._id)}">剩餘 ${formatDuration(timeLeft)}</strong>
-        <span>逾時會使旅程退後 1 格</span>
-      </div>
-      <div class="boss-health-row">
-        <strong data-boss-estimate="${escapeAttr(boss._id)}">預計完成 ${estimate.label}</strong>
-        <span class="${estimate.willMissDeadline ? 'danger-text' : ''}" data-boss-estimate-status="${escapeAttr(boss._id)}">${estimate.detail}</span>
+        <strong>${defeated ? '討伐成功' : '討伐進度'}</strong>
+        <span>${defeated ? '準備下一個 Boss' : '團員戰力會持續推進進度'}</span>
       </div>
       <div class="boss-actions">
         ${
@@ -1200,40 +1374,45 @@ const renderBossCard = (boss) => {
   `;
 };
 
-const getWeaponItems = () => sortInventoryItems(state.player.items || []).filter((item) => typeToSlot[item.type] === 'weapon');
+const getUpgradeableItems = () => sortInventoryItems(state.player.items || []);
 
 const getUpgradeSuccessRate = (item) => Math.max(10, 100 - (Number(item.upgradeLevel || 0) + 1) * 10);
+const getNextRarity = (rarity) => {
+  const index = raritySteps.indexOf(rarity);
+  return index >= 0 && index < raritySteps.length - 1 ? raritySteps[index + 1] : null;
+};
+const getRarityUpgradeSuccessRate = (item) => Math.max(5, Math.floor(getUpgradeSuccessRate(item) / 2));
 
 const renderUpgrade = () => {
   if (state.player.role !== 'student') {
     return `
       <section class="view-title">
-        <h2>聖器升級</h2>
-        <p>只有團員可以升級聖器。</p>
+        <h2>裝備升級</h2>
+        <p>只有團員可以升級裝備。</p>
       </section>
-      <div class="empty-card">導師帳號不需要升級聖器。</div>
+      <div class="empty-card">導師帳號不需要升級裝備。</div>
     `;
   }
 
-  const weapons = getWeaponItems();
+  const upgradeItems = getUpgradeableItems();
 
   return `
     <section class="view-title">
-      <h2>聖器升級</h2>
-      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後聖器 +1，戰力 +${formatNumber(upgradePowerGain)}；最高 +${formatNumber(maxUpgradeLevel)}。</p>
+      <h2>裝備升級</h2>
+      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；S / SS 裝備可突破稀有度，成功率會減半。</p>
     </section>
 
     <section class="stats-grid">
       <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
       <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
-      <div class="stat-card"><span>聖器數</span><strong>${formatNumber(weapons.length)}</strong></div>
+      <div class="stat-card"><span>裝備數</span><strong>${formatNumber(upgradeItems.length)}</strong></div>
     </section>
 
     <section class="items-grid">
       ${
-        weapons.length
-          ? weapons.map(renderUpgradeCard).join('')
-          : '<div class="empty-card">背包尚無聖器，可先到商店購買或開神秘盒。</div>'
+        upgradeItems.length
+          ? upgradeItems.map(renderUpgradeCard).join('')
+          : '<div class="empty-card">背包尚無裝備，可先到商店購買或開神秘盒。</div>'
       }
     </section>
   `;
@@ -1243,10 +1422,12 @@ const renderUpgradeCard = (item) => {
   const level = Number(item.upgradeLevel || 0);
   const maxed = level >= maxUpgradeLevel;
   const canAfford = Number(state.player.gold || 0) >= upgradeCost;
+  const nextRarity = getNextRarity(item.rarity);
+  const canBreakRarity = Boolean(nextRarity) && Number(state.player.gold || 0) >= upgradeCost;
 
   return `
     <article class="item-card upgrade-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item, { alwaysShow: true })}</h3>
         <div class="item-meta">
@@ -1255,7 +1436,10 @@ const renderUpgradeCard = (item) => {
           <span>成功率 ${maxed ? '已滿' : `${formatNumber(getUpgradeSuccessRate(item))}%`}</span>
           <span>費用 ${formatNumber(upgradeCost)}</span>
         </div>
-        <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '升級' : '金幣不足'}</button>
+        <div class="item-actions">
+          <button class="mini-button" type="button" data-action="upgrade-item" data-upgrade-mode="level" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '裝備 +1' : '金幣不足'}</button>
+          <button class="mini-button" type="button" data-action="upgrade-item" data-upgrade-mode="rarity" data-inventory-id="${escapeAttr(item.inventoryId)}" ${nextRarity && canBreakRarity ? '' : 'disabled'}>${nextRarity ? `突破 ${nextRarity}（${formatNumber(getRarityUpgradeSuccessRate(item))}%）` : '已達最高稀有度'}</button>
+        </div>
       </div>
     </article>
   `;
@@ -1278,7 +1462,7 @@ const renderPets = () => {
   return `
     <section class="view-title">
       <h2>寵物</h2>
-      <p>寵物戰力會加入總戰力。每次餵食消耗 ${formatNumber(feedPetCost)} 金幣並提升 ${formatNumber(petPowerGain)} 戰力。</p>
+      <p>寵物戰力會加入總戰力。每次升級需要答對一題聖經問題，成功後消耗 ${formatNumber(feedPetCost)} 金幣並提升 ${formatNumber(petPowerGain)} 戰力。</p>
     </section>
 
     <section class="stats-grid">
@@ -1291,7 +1475,7 @@ const renderPets = () => {
       <div class="card-header">
         <div>
           <h3>我的寵物</h3>
-          <p>${pets.length ? '餵食寵物可以提升等級與戰力。' : '先從下方選擇一隻寵物。'}</p>
+          <p>${pets.length ? '答對問題即可提升等級與戰力。' : '先從下方選擇一隻寵物。'}</p>
         </div>
         <button class="ghost-button" type="button" data-action="unlock-pet-slot" ${availableSlots >= maxPetSlots || state.player.gold < unlockPetSlotCost ? 'disabled' : ''}>解鎖欄位 ${formatNumber(unlockPetSlotCost)}</button>
       </div>
@@ -1326,7 +1510,7 @@ const renderOwnedPetCard = (pet) => `
   <article class="pet-card">
     <strong>${escapeHtml(pet.name)}</strong>
     <span>${escapeHtml(pet.type)} · Lv.${formatNumber(pet.level)} · 戰力 ${formatNumber(pet.power)}</span>
-    <button class="mini-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>餵食 ${formatNumber(feedPetCost)}</button>
+    <button class="mini-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${formatNumber(feedPetCost)}</button>
   </article>
 `;
 
@@ -1648,8 +1832,10 @@ const runAction = async (action, successMessage) => {
 
     showToast(result?.message || successMessage || '操作完成。');
     await refreshViewData();
+    return result;
   } catch (error) {
     showToast(error.message, 'error');
+    return null;
   } finally {
     state.busy = false;
   }
@@ -1671,6 +1857,7 @@ app.addEventListener('click', async (event) => {
   const field = event.target.closest('.field');
   const authModeButton = event.target.closest('[data-auth-mode]');
   const authRoleButton = event.target.closest('[data-auth-role]');
+  const authAvatarButton = event.target.closest('[data-auth-avatar]');
   const coinAmountButton = event.target.closest('[data-coin-amount]');
   const nav = event.target.closest('.nav-button[data-view]');
   const actionButton = event.target.closest('[data-action]');
@@ -1689,6 +1876,13 @@ app.addEventListener('click', async (event) => {
 
   if (authRoleButton) {
     state.authRole = authRoleButton.dataset.authRole;
+    renderAuth();
+    return;
+  }
+
+  if (authAvatarButton) {
+    state.authAvatar = authAvatarButton.dataset.authAvatar;
+    localStorage.setItem('ctqAuthAvatar', state.authAvatar);
     renderAuth();
     return;
   }
@@ -1741,10 +1935,37 @@ app.addEventListener('click', async (event) => {
   }
 
   if (action === 'open-box') {
-    await runAction(() =>
-      api('/api/openBox', {
+    if (state.busy) {
+      return;
+    }
+
+    state.busy = true;
+    try {
+      const result = await api('/api/openBox', {
         method: 'POST',
         body: JSON.stringify({})
+      });
+      state.player = result.player;
+      state.boxReveal = { reward: result.reward };
+      renderShell();
+      showToast(result.message);
+      window.setTimeout(async () => {
+        state.boxReveal = null;
+        await refreshViewData();
+      }, 2800);
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      state.busy = false;
+    }
+    return;
+  }
+
+  if (action === 'update-avatar') {
+    await runAction(() =>
+      api('/api/avatar', {
+        method: 'POST',
+        body: JSON.stringify({ avatar: actionButton.dataset.avatar })
       })
     );
     return;
@@ -1770,10 +1991,11 @@ app.addEventListener('click', async (event) => {
 
   if (action === 'upgrade-item') {
     const inventoryId = actionButton.dataset.inventoryId;
+    const mode = actionButton.dataset.upgradeMode || 'level';
     await runAction(() =>
       api('/api/upgradeItem', {
         method: 'POST',
-        body: JSON.stringify({ inventoryId })
+        body: JSON.stringify({ inventoryId, mode })
       })
     );
     return;
@@ -1790,12 +2012,41 @@ app.addEventListener('click', async (event) => {
   }
 
   if (action === 'feed-pet') {
-    await runAction(() =>
+    try {
+      const data = await api('/api/petQuestion');
+      state.petQuiz = {
+        petId: actionButton.dataset.petId,
+        question: data.question
+      };
+      renderShell();
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
+    return;
+  }
+
+  if (action === 'cancel-pet-question') {
+    state.petQuiz = null;
+    renderShell();
+    return;
+  }
+
+  if (action === 'answer-pet-question') {
+    const quiz = state.petQuiz;
+    const result = await runAction(() =>
       api('/api/feedPet', {
         method: 'POST',
-        body: JSON.stringify({ petInstanceId: actionButton.dataset.petId })
+        body: JSON.stringify({
+          petInstanceId: quiz?.petId,
+          questionId: quiz?.question?.id,
+          answer: actionButton.dataset.answer
+        })
       })
     );
+    if (result) {
+      state.petQuiz = null;
+      renderShell();
+    }
     return;
   }
 
@@ -1951,6 +2202,7 @@ app.addEventListener('submit', async (event) => {
     if (state.authMode === 'register') {
       payload.role = state.authRole;
       payload.teacherKey = formData.get('teacherKey');
+      payload.avatar = state.authAvatar;
     }
 
     await runAction(async () => {
@@ -1987,8 +2239,6 @@ app.addEventListener('submit', async (event) => {
         method: 'POST',
         body: JSON.stringify({
           killCount: formData.get('killCount'),
-          intensity: formData.get('intensity'),
-          bossDeadlineHours: formData.get('bossDeadlineHours'),
           frontlineStep: formData.get('frontlineStep'),
           resetBosses: formData.get('resetBosses') === 'on'
         })

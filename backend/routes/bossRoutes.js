@@ -11,6 +11,7 @@ const activeBossCount = 3;
 const bossKeyPrefix = 'hunt';
 const worldStepCount = 25;
 const initialFrontlineStep = 13;
+const bossVictoryReward = 500;
 
 const bossNames = [
   '墮翼‧阿茲撒爾',
@@ -157,6 +158,26 @@ const createEventParticipants = (participants = []) =>
     name: participant.name,
     power: Number(participant.totalPower || participant.power || 0)
   }));
+
+const rewardVictoryParticipants = async (participants = []) => {
+  const participantIds = [
+    ...new Set(
+      participants
+        .map((participant) => participant._id)
+        .filter(Boolean)
+        .map((id) => id.toString())
+    )
+  ];
+
+  if (!participantIds.length) {
+    return;
+  }
+
+  await Player.updateMany(
+    { _id: { $in: participantIds }, role: 'student' },
+    { $inc: { gold: bossVictoryReward } }
+  );
+};
 
 const trimCampaignEvents = (events = []) => {
   const newestFirst = [...events].sort((left, right) => {
@@ -403,11 +424,12 @@ const moveCampaignFront = async (outcome, bossName, powerSnapshot = { totalPower
   if (outcome === 'victory') {
     config.killCount = Number(config.killCount || 0) + 1;
     config.frontlineStep = clampCampaignStep(config.frontlineStep + 1);
-    eventMessage = `團員擊退了「${bossName}」，戰線向敵方主世界推進一格。`;
+    await rewardVictoryParticipants(powerSnapshot.participants);
+    eventMessage = `團員討伐成功「${bossName}」，戰線向敵陣前進一格，參與者獲得 ${bossVictoryReward} 代幣。`;
   } else {
     config.defenseLosses = Number(config.defenseLosses || 0) + 1;
     config.frontlineStep = clampCampaignStep(config.frontlineStep - 1);
-    eventMessage = `「${bossName}」突破期限，戰線往我方主城退後一格。`;
+    eventMessage = `「${bossName}」突破期限，我方被攻佔一格。`;
   }
 
   config.lastCampaignEvent = eventMessage;
@@ -501,6 +523,20 @@ const publicCampaignEvent = (event) => ({
   })),
   occurredAt: event.occurredAt ? event.occurredAt.toISOString() : null
 });
+
+const publicLastCampaignEvent = (config) => {
+  const latestPublicEvent = trimCampaignEvents(config.campaignEvents || []).find((event) => event.type !== 'manual');
+
+  if (latestPublicEvent?.message) {
+    return latestPublicEvent.message;
+  }
+
+  if (config.lastCampaignEvent && !config.lastCampaignEvent.includes('導師')) {
+    return config.lastCampaignEvent;
+  }
+
+  return '戰線保持穩定，等待下一次討伐結果。';
+};
 
 const buildNoticeBoard = (config, bossPayloads) => {
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -602,7 +638,7 @@ const buildStatusPayload = async (currentUserId) => {
       worldSteps: config.worldSteps,
       frontlineStep: config.frontlineStep,
       bossDeadlineHours: getBossDeadlineHours(config),
-      lastCampaignEvent: config.lastCampaignEvent
+      lastCampaignEvent: publicLastCampaignEvent(config)
     }
   };
 };
@@ -709,8 +745,7 @@ router.post('/worldBoss/config', verifyToken, requireRole('teacher'), async (req
       frontlineChanged = nextFrontlineStep !== config.frontlineStep;
       config.frontlineStep = nextFrontlineStep;
       if (frontlineChanged) {
-        const eventMessage = '導師手動調整了兩個世界之間的戰線位置。';
-        config.lastCampaignEvent = eventMessage;
+        const eventMessage = '戰線位置已更新。';
         config.campaignEvents = trimCampaignEvents([
           {
             type: 'manual',

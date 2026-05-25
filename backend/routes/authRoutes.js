@@ -8,9 +8,13 @@ const normalizeRole = (role) => {
   return role === 'teacher' ? 'teacher' : 'student';
 };
 
+const normalizeAvatar = (avatar) => {
+  return ['male-1', 'male-2', 'female-1', 'female-2'].includes(avatar) ? avatar : 'male-1';
+};
+
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, password, role, teacherKey } = req.body;
+    const { name, password, role, teacherKey, avatar } = req.body;
     const normalizedName = String(name || '').trim();
     const normalizedRole = normalizeRole(role);
 
@@ -32,6 +36,7 @@ router.post('/register', async (req, res, next) => {
       name: normalizedName,
       password,
       role: normalizedRole,
+      avatar: normalizeAvatar(avatar),
       gold: normalizedRole === 'student' ? 300 : 0
     });
     const token = signToken(player);
