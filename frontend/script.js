@@ -135,12 +135,50 @@ const getLiveBossHp = (boss) => {
   }
 
   const calculatedAt = Date.parse(boss.calculatedAt || '');
+  const deadlineAt = Date.parse(boss.deadlineAt || '');
+  const now = Date.now();
+  const liveAt = Number.isFinite(deadlineAt) && now > deadlineAt ? deadlineAt : now;
   const elapsedSeconds =
-    boss.defeatedAt || !Number.isFinite(calculatedAt)
+    boss.defeatedAt || boss.failedAt || !Number.isFinite(calculatedAt)
       ? 0
-      : Math.max(0, Math.floor((Date.now() - calculatedAt) / 1000));
+      : Math.max(0, Math.floor((liveAt - calculatedAt) / 1000));
 
   return Math.max(0, Number(boss.hp || 0) - elapsedSeconds * Number(boss.totalPower || 0));
+};
+
+const getBossTimeLeft = (boss) => {
+  const deadlineAt = Date.parse(boss?.deadlineAt || '');
+
+  if (!Number.isFinite(deadlineAt)) {
+    return null;
+  }
+
+  return Math.max(0, deadlineAt - Date.now());
+};
+
+const formatDuration = (milliseconds) => {
+  if (milliseconds === null) {
+    return '未設定';
+  }
+
+  if (milliseconds <= 0) {
+    return '已到限';
+  }
+
+  const totalMinutes = Math.ceil(milliseconds / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return `${days}天 ${hours}小時`;
+  }
+
+  if (hours > 0) {
+    return `${hours}小時 ${minutes}分`;
+  }
+
+  return `${minutes}分`;
 };
 
 const bossHpPercent = (boss) => {
@@ -161,17 +199,23 @@ const updateBossLiveHp = () => {
     const hpTexts = document.querySelectorAll(`[data-boss-hp="${boss._id}"]`);
     const hpBar = document.querySelector(`[data-boss-hp-bar="${boss._id}"]`);
     const statusText = document.querySelector(`[data-boss-status="${boss._id}"]`);
+    const deadlineText = document.querySelector(`[data-boss-deadline="${boss._id}"]`);
+    const timeLeft = getBossTimeLeft(boss);
 
     hpTexts.forEach((hpText) => {
       hpText.textContent = formatNumber(hp);
     });
 
+    if (deadlineText) {
+      deadlineText.textContent = `剩餘 ${formatDuration(timeLeft)}`;
+    }
+
     if (hpBar) {
       hpBar.style.width = `${bossHpPercent(boss)}%`;
     }
 
-    if (statusText && hp <= 0) {
-      statusText.textContent = '已擊敗，正在更換目標';
+    if (statusText && (hp <= 0 || timeLeft === 0)) {
+      statusText.textContent = hp <= 0 ? '已擊敗，正在更換目標' : '期限已到，戰線結算中';
     }
   });
 };
@@ -764,6 +808,52 @@ const renderHunt = () => {
   `;
 };
 
+const campaignNarrative = (config = {}) => {
+  const step = Number(config.frontlineStep ?? 13);
+  const maxStep = Number(config.worldSteps || 25);
+
+  if (step <= 0) {
+    return '敵軍已壓到主城門前，所有討伐都會變成守城戰。';
+  }
+
+  if (step <= 5) {
+    return '敵軍正在逼近主城外圍，需要盡快擊殺 Boss 把戰線推回裂隙。';
+  }
+
+  if (step < Math.ceil(maxStep / 2)) {
+    return '戰線偏向我方世界，團員需要集中火力阻止敵軍繼續推進。';
+  }
+
+  if (step < maxStep - 5) {
+    return '戰線在兩個世界之間拉鋸，每一次討伐都會改變前線位置。';
+  }
+
+  if (step < maxStep) {
+    return '遠征隊已逼近敵方主世界，連續擊殺可以把戰線推到最深處。';
+  }
+
+  return '戰線已推到敵方主世界，下一波討伐將決定能否守住遠征成果。';
+};
+
+const renderCampaignTrack = (config = {}) => {
+  const maxStep = Number(config.worldSteps || 25);
+  const currentStep = Number(config.frontlineStep ?? 13);
+
+  return Array.from({ length: maxStep + 1 }, (_, step) => {
+    const classes = [
+      'frontline-step',
+      step === 0 ? 'home' : '',
+      step === maxStep ? 'enemy' : '',
+      step === currentStep ? 'current' : '',
+      step < currentStep ? 'secured' : ''
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const label = step === 0 ? '主' : step === maxStep ? '敵' : step;
+    return `<span class="${classes}" title="第 ${step} 步">${label}</span>`;
+  }).join('');
+};
+
 const renderHuntBosses = () => {
   if (!state.bosses.length) {
     return `
@@ -778,13 +868,33 @@ const renderHuntBosses = () => {
   return `
     <section class="view-title">
       <h2>討伐</h2>
-      <p>同時會出現 3 隻 Boss。每位團員選擇一場加入，討伐成功後會自動更換新的 Boss。</p>
+      <p>兩個世界之間有 25 步戰線。擊殺 Boss 會向敵方主世界推進，期限內未擊殺則敵軍往主城推進。</p>
     </section>
 
     <section class="stats-grid" aria-label="討伐狀態">
+      <div class="stat-card"><span>戰線位置</span><strong>${formatNumber(state.bossConfig?.frontlineStep)} / ${formatNumber(state.bossConfig?.worldSteps)}</strong></div>
       <div class="stat-card"><span>已討伐</span><strong>${formatNumber(state.bossConfig?.killCount)}</strong></div>
+      <div class="stat-card"><span>失守次數</span><strong>${formatNumber(state.bossConfig?.defenseLosses)}</strong></div>
       <div class="stat-card"><span>Boss 強度</span><strong>${formatNumber(state.bossConfig?.intensity || 1)}x</strong></div>
       <div class="stat-card"><span>基礎血量</span><strong>${formatNumber(state.bossConfig?.baseHp)}</strong></div>
+      <div class="stat-card"><span>期限</span><strong>${formatNumber(state.bossConfig?.bossDeadlineHours || 120)}小時</strong></div>
+    </section>
+
+    <section class="card campaign-card">
+      <div class="card-header">
+        <div>
+          <h3>主城戰線</h3>
+          <p>${escapeHtml(campaignNarrative(state.bossConfig))}</p>
+        </div>
+      </div>
+      <div class="frontline-labels">
+        <span>我方主城</span>
+        <span>敵方主世界</span>
+      </div>
+      <div class="frontline-track" aria-label="兩個世界之間的 25 步戰線">
+        ${renderCampaignTrack(state.bossConfig)}
+      </div>
+      <p class="campaign-event">${escapeHtml(state.bossConfig?.lastCampaignEvent || '')}</p>
     </section>
 
     ${
@@ -806,6 +916,10 @@ const renderHuntBosses = () => {
                 <label for="bossIntensity">Boss 強度</label>
                 <input id="bossIntensity" name="intensity" type="number" min="1" step="1" value="${Number(state.bossConfig?.intensity || 1)}" />
               </div>
+              <div class="field">
+                <label for="frontlineStep">戰線位置（0 主城 / 25 敵方主世界）</label>
+                <input id="frontlineStep" name="frontlineStep" type="number" min="0" max="${Number(state.bossConfig?.worldSteps || 25)}" step="1" value="${Number(state.bossConfig?.frontlineStep ?? 13)}" />
+              </div>
               <label class="check-row">
                 <input name="resetBosses" type="checkbox" />
                 <span>儲存後立即重置三隻 Boss</span>
@@ -825,10 +939,13 @@ const renderHuntBosses = () => {
 
 const renderBossCard = (boss) => {
   const hp = getLiveBossHp(boss);
+  const timeLeft = getBossTimeLeft(boss);
   const defeated = hp <= 0 || Boolean(boss.defeatedAt);
   const bossStatus = defeated
     ? '已擊敗，正在更換目標'
-    : Number(boss.totalPower || 0) > 0
+    : timeLeft === 0
+      ? '期限已到，戰線結算中'
+      : Number(boss.totalPower || 0) > 0
       ? `每秒 -${formatNumber(boss.totalPower)}`
       : '等待團員加入';
 
@@ -848,10 +965,14 @@ const renderBossCard = (boss) => {
         <strong><span data-boss-hp="${escapeAttr(boss._id)}">${formatNumber(hp)}</span> / ${formatNumber(boss.maxHp)}</strong>
         <span>${defeated ? '更換中' : `參戰 ${formatNumber(boss.participantCount)} 人`}</span>
       </div>
+      <div class="boss-health-row">
+        <strong data-boss-deadline="${escapeAttr(boss._id)}">剩餘 ${formatDuration(timeLeft)}</strong>
+        <span>逾時會使戰線退後 1 格</span>
+      </div>
       <div class="boss-actions">
         ${
           state.player.role === 'student'
-            ? `<button class="primary-button" type="button" data-action="join-boss" data-boss-id="${escapeAttr(boss._id)}" ${boss.joined || defeated ? 'disabled' : ''}>${boss.joined ? '已加入此討伐' : '加入討伐'}</button>`
+            ? `<button class="primary-button" type="button" data-action="join-boss" data-boss-id="${escapeAttr(boss._id)}" ${boss.joined || defeated || timeLeft === 0 ? 'disabled' : ''}>${boss.joined ? '已加入此討伐' : '加入討伐'}</button>`
             : `<button class="danger-button" type="button" data-action="reset-boss" data-boss-slot="${escapeAttr(boss.slot)}">重置此 Boss</button>`
         }
       </div>
@@ -1661,6 +1782,7 @@ app.addEventListener('submit', async (event) => {
         body: JSON.stringify({
           killCount: formData.get('killCount'),
           intensity: formData.get('intensity'),
+          frontlineStep: formData.get('frontlineStep'),
           resetBosses: formData.get('resetBosses') === 'on'
         })
       })

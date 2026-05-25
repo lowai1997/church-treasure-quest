@@ -22,3 +22,5 @@ services:
         value: 3024000000
       - key: WORLD_BOSS_SETTLE_SECONDS
         value: 10
+      - key: WORLD_BOSS_DEADLINE_HOURS
+        value: 120

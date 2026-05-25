@@ -59,7 +59,15 @@ const bossBattleSchema = new mongoose.Schema(
       type: Date,
       default: Date.now
     },
+    deadlineAt: {
+      type: Date,
+      default: null
+    },
     defeatedAt: {
+      type: Date,
+      default: null
+    },
+    failedAt: {
       type: Date,
       default: null
     }

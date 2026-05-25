@@ -58,6 +58,7 @@ JWT_SECRET=please-change-this-secret
 TEACHER_REGISTER_KEY=Amen2026
 WORLD_BOSS_MAX_HP=3024000000
 WORLD_BOSS_SETTLE_SECONDS=10
+WORLD_BOSS_DEADLINE_HOURS=120
 ```
 
 3. 建立預設商店物品
@@ -105,10 +106,10 @@ http://localhost:3000
 | `/api/feedPet` | POST | 團員餵食寵物並提升寵物戰力 |
 | `/api/unlockPetSlot` | POST | 團員花費金幣解鎖額外寵物欄位 |
 | `/api/getRank` | GET | 依照裝備與寵物總戰力排序玩家 |
-| `/api/worldBoss/status` | GET | 取得討伐三隻 Boss、擊殺數、強度、血量、參戰名單與合計戰力 |
+| `/api/worldBoss/status` | GET | 取得討伐三隻 Boss、戰線位置、擊殺數、強度、期限、血量、參戰名單與合計戰力 |
 | `/api/worldBoss/join` | POST | 團員選擇其中一隻討伐 Boss 加入戰鬥 |
 | `/api/worldBoss/reset` | POST | 導師重置單一或全部討伐 Boss |
-| `/api/worldBoss/config` | POST | 導師調整討伐擊殺數與 Boss 強度 |
+| `/api/worldBoss/config` | POST | 導師調整討伐擊殺數、Boss 強度與戰線位置 |
 | `/api/teacher/pets/add` | POST | 導師替團員新增活動獎勵寵物 |
 | `/api/teacher/pets/update` | POST | 導師修改團員寵物資料 |
 | `/api/removePlayer` | DELETE | 導師刪除團員玩家帳號 |
@@ -174,6 +175,7 @@ TEACHER_REGISTER_KEY=Amen2026
 NODE_ENV=production
 WORLD_BOSS_MAX_HP=3024000000
 WORLD_BOSS_SETTLE_SECONDS=10
+WORLD_BOSS_DEADLINE_HOURS=120
 ```
 
 ## 平衡設定
@@ -212,7 +214,13 @@ SSS 2% x 120 = 2.4
 
 裝備欄共 8 格。若全身 N 約 40 戰力、全身 R 約 96、全身 S 約 200、全身 SS 約 440、全身 SSS 約 960。武器最多兩把，每把升到 +3 可額外增加 30 戰力，因此全武器升滿最多再增加 60 戰力。寵物預設基礎戰力 20，每次餵食花費 50 金幣並增加 10 戰力，讓團員即使暫時抽不到好裝備，也能穩定把金幣轉成長期戰力。
 
-討伐預設同時開放 3 隻 Boss。每隻 Boss 的血量 = `WORLD_BOSS_MAX_HP` x 導師設定的強度；每秒扣血 = 已加入該 Boss 團員的最新總戰力。瀏覽器每秒只做畫面倒數，伺服器預設每 10 秒才批次結算一次血量，並用 `lastSettledAt` 防止多個裝置同時重複扣血。Boss 被擊敗後會自動更換新 Boss，並累加總擊殺數。
+討伐預設同時開放 3 隻 Boss，並加入 25 步戰線故事。戰線位置 `0` 是我方主城，`25` 是敵方主世界，預設從中線 `13` 開始。每隻 Boss 的血量 = `WORLD_BOSS_MAX_HP` x 導師設定的強度；每秒扣血 = 已加入該 Boss 團員的最新總戰力。瀏覽器每秒只做畫面倒數，伺服器預設每 10 秒才批次結算一次血量，並用 `lastSettledAt` 防止多個裝置同時重複扣血。
+
+每隻 Boss 預設有 `WORLD_BOSS_DEADLINE_HOURS=120`，也就是 5 天期限：
+
+- 期限內擊殺 Boss：戰線向敵方主世界推進 1 步，並累加擊殺數。
+- 期限到仍未擊殺：敵軍向我方主城推進 1 步，並累加失守次數。
+- Boss 結算後會自動更換新 Boss，並重新開始 5 天期限。
 
 預設基準是 10 位團員、平均 700 戰力時，約 5 天擊敗一隻強度 1 的 Boss：
 

@@ -9,6 +9,8 @@ const router = express.Router();
 const configKey = 'hunt';
 const activeBossCount = 3;
 const bossKeyPrefix = 'hunt';
+const worldStepCount = 25;
+const initialFrontlineStep = 13;
 
 const bossNames = [
   '墮翼‧阿茲撒爾',
@@ -125,20 +127,77 @@ const toNonNegativeInteger = (value, fallback) => {
 
 const getBaseBossHp = () => toPositiveInteger(process.env.WORLD_BOSS_MAX_HP, 3_024_000_000);
 const getSettleSeconds = () => toPositiveInteger(process.env.WORLD_BOSS_SETTLE_SECONDS, 10);
+const getBossDeadlineHours = () => toPositiveInteger(process.env.WORLD_BOSS_DEADLINE_HOURS, 120);
 const battleKeyForSlot = (slot) => `${bossKeyPrefix}-${slot}`;
+
+const clampCampaignStep = (value) => {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return initialFrontlineStep;
+  }
+
+  return Math.max(0, Math.min(worldStepCount, Math.floor(parsed)));
+};
+
+const addBossDeadline = (date) => new Date(date.getTime() + getBossDeadlineHours() * 60 * 60 * 1000);
+
+const getBossDeadlineAt = (boss) => {
+  if (boss.deadlineAt) {
+    return boss.deadlineAt;
+  }
+
+  return addBossDeadline(boss.startedAt || new Date());
+};
+
+const normalizeConfig = async (config) => {
+  let changed = false;
+
+  if (config.worldSteps !== worldStepCount) {
+    config.worldSteps = worldStepCount;
+    changed = true;
+  }
+
+  if (config.frontlineStep === undefined || config.frontlineStep === null) {
+    config.frontlineStep = initialFrontlineStep;
+    changed = true;
+  }
+
+  const clampedStep = clampCampaignStep(config.frontlineStep);
+  if (config.frontlineStep !== clampedStep) {
+    config.frontlineStep = clampedStep;
+    changed = true;
+  }
+
+  if (!config.lastCampaignEvent) {
+    config.lastCampaignEvent = '戰線在兩個世界的裂隙中拉鋸。';
+    changed = true;
+  }
+
+  if (config.defenseLosses === undefined || config.defenseLosses === null || Number.isNaN(Number(config.defenseLosses))) {
+    config.defenseLosses = 0;
+    changed = true;
+  }
+
+  if (changed) {
+    await config.save();
+  }
+
+  return config;
+};
 
 const getOrCreateConfig = async () => {
   const existingConfig = await BossConfig.findOne({ configKey });
 
   if (existingConfig) {
-    return existingConfig;
+    return normalizeConfig(existingConfig);
   }
 
   try {
-    return await BossConfig.create({ configKey });
+    return normalizeConfig(await BossConfig.create({ configKey }));
   } catch (error) {
     if (error.code === 11000) {
-      return BossConfig.findOne({ configKey });
+      return normalizeConfig(await BossConfig.findOne({ configKey }));
     }
 
     throw error;
@@ -164,6 +223,7 @@ const spawnBoss = async (slot, config = null) => {
   const now = new Date();
   const name = await claimBossName();
   const { maxHp, intensity } = buildBossStats(activeConfig.intensity);
+  const deadlineAt = addBossDeadline(now);
 
   return BossBattle.findOneAndUpdate(
     { battleKey: battleKeyForSlot(slot) },
@@ -178,6 +238,8 @@ const spawnBoss = async (slot, config = null) => {
         participants: [],
         startedAt: now,
         lastSettledAt: now,
+        deadlineAt,
+        failedAt: null,
         defeatedAt: null
       }
     },
@@ -194,6 +256,11 @@ const ensureActiveBosses = async () => {
 
     if (!boss) {
       boss = await spawnBoss(slot, config);
+    }
+
+    if (!boss.deadlineAt) {
+      boss.deadlineAt = addBossDeadline(boss.startedAt || new Date());
+      await boss.save();
     }
 
     bosses.push(boss);
@@ -239,24 +306,27 @@ const loadParticipantPower = async (boss) => {
 };
 
 const settleBoss = async (boss, totalPower, { force = false } = {}) => {
-  if (!boss || boss.defeatedAt) {
+  if (!boss || boss.defeatedAt || boss.failedAt) {
     return boss;
   }
 
   const now = new Date();
-  const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - boss.lastSettledAt.getTime()) / 1000));
+  const deadlineAt = getBossDeadlineAt(boss);
+  const settlementEnd = now > deadlineAt ? deadlineAt : now;
+  const elapsedSeconds = Math.max(0, Math.floor((settlementEnd.getTime() - boss.lastSettledAt.getTime()) / 1000));
+  const isPastDeadline = now >= deadlineAt;
 
-  if (elapsedSeconds <= 0) {
+  if (elapsedSeconds <= 0 && !isPastDeadline) {
     return boss;
   }
 
-  if (totalPower <= 0 && !force) {
+  if (totalPower <= 0 && !force && !isPastDeadline) {
     return boss;
   }
 
   const pendingDamage = elapsedSeconds * totalPower;
   const nextHp = Math.max(0, Number(boss.hp || 0) - pendingDamage);
-  const shouldPersist = force || elapsedSeconds >= getSettleSeconds() || nextHp <= 0;
+  const shouldPersist = force || elapsedSeconds >= getSettleSeconds() || nextHp <= 0 || isPastDeadline;
 
   if (!shouldPersist) {
     return boss;
@@ -264,7 +334,7 @@ const settleBoss = async (boss, totalPower, { force = false } = {}) => {
 
   const update = {
     hp: nextHp,
-    lastSettledAt: now
+    lastSettledAt: settlementEnd
   };
 
   if (nextHp <= 0) {
@@ -272,7 +342,7 @@ const settleBoss = async (boss, totalPower, { force = false } = {}) => {
   }
 
   const updatedBoss = await BossBattle.findOneAndUpdate(
-    { _id: boss._id, lastSettledAt: boss.lastSettledAt, defeatedAt: null },
+    { _id: boss._id, startedAt: boss.startedAt, lastSettledAt: boss.lastSettledAt, defeatedAt: null, failedAt: null },
     { $set: update },
     { new: true }
   );
@@ -280,14 +350,46 @@ const settleBoss = async (boss, totalPower, { force = false } = {}) => {
   return updatedBoss || BossBattle.findById(boss._id);
 };
 
-const rotateBossIfDefeated = async (boss, liveHp) => {
-  if (!boss.defeatedAt && liveHp > 0) {
+const moveCampaignFront = async (outcome, bossName) => {
+  const config = await getOrCreateConfig();
+
+  if (outcome === 'victory') {
+    config.killCount = Number(config.killCount || 0) + 1;
+    config.frontlineStep = clampCampaignStep(config.frontlineStep + 1);
+    config.lastCampaignEvent = `團員擊退了「${bossName}」，戰線向敵方主世界推進一格。`;
+  } else {
+    config.defenseLosses = Number(config.defenseLosses || 0) + 1;
+    config.frontlineStep = clampCampaignStep(config.frontlineStep - 1);
+    config.lastCampaignEvent = `「${bossName}」突破期限，戰線往我方主城退後一格。`;
+  }
+
+  await config.save();
+  return config;
+};
+
+const resolveBossOutcome = async (boss, liveHp) => {
+  const now = new Date();
+  const deadlineAt = getBossDeadlineAt(boss);
+  const isVictory = Boolean(boss.defeatedAt) || liveHp <= 0;
+  const isExpired = now >= deadlineAt && liveHp > 0;
+
+  if (!isVictory && !isExpired) {
     return boss;
   }
 
+  const update =
+    isVictory
+      ? { defeatedAt: now }
+      : { failedAt: now };
   const claimed = await BossBattle.findOneAndUpdate(
-    { _id: boss._id, defeatedAt: boss.defeatedAt },
-    { $set: { defeatedAt: new Date() } },
+    {
+      _id: boss._id,
+      startedAt: boss.startedAt,
+      deadlineAt: boss.deadlineAt,
+      defeatedAt: boss.defeatedAt || null,
+      failedAt: boss.failedAt || null
+    },
+    { $set: update },
     { new: true }
   );
 
@@ -295,20 +397,22 @@ const rotateBossIfDefeated = async (boss, liveHp) => {
     return BossBattle.findById(boss._id);
   }
 
-  await BossConfig.updateOne({ configKey }, { $inc: { killCount: 1 } });
-  return spawnBoss(boss.slot, await getOrCreateConfig());
+  const config = await moveCampaignFront(isVictory ? 'victory' : 'expired', claimed.name);
+  return spawnBoss(boss.slot, config);
 };
 
 const buildBossPayload = async (boss, currentUserId, { forceSettle = false } = {}) => {
   const powerSnapshot = await loadParticipantPower(boss);
   let settledBoss = await settleBoss(boss, powerSnapshot.totalPower, { force: forceSettle });
   const responseAt = new Date();
-  const elapsedSeconds = settledBoss.defeatedAt
+  const deadlineAt = getBossDeadlineAt(settledBoss);
+  const liveCalculationAt = responseAt > deadlineAt ? deadlineAt : responseAt;
+  const elapsedSeconds = settledBoss.defeatedAt || settledBoss.failedAt
     ? 0
-    : Math.max(0, Math.floor((responseAt.getTime() - settledBoss.lastSettledAt.getTime()) / 1000));
+    : Math.max(0, Math.floor((liveCalculationAt.getTime() - settledBoss.lastSettledAt.getTime()) / 1000));
   const liveHp = Math.max(0, Number(settledBoss.hp || 0) - elapsedSeconds * powerSnapshot.totalPower);
 
-  settledBoss = await rotateBossIfDefeated(settledBoss, liveHp);
+  settledBoss = await resolveBossOutcome(settledBoss, liveHp);
 
   if (liveHp <= 0 || settledBoss.startedAt.getTime() !== boss.startedAt.getTime()) {
     return buildBossPayload(settledBoss, currentUserId);
@@ -330,8 +434,10 @@ const buildBossPayload = async (boss, currentUserId, { forceSettle = false } = {
     joined: currentUserId ? participantIds.has(currentUserId.toString()) : false,
     startedAt: settledBoss.startedAt.toISOString(),
     lastSettledAt: settledBoss.lastSettledAt.toISOString(),
+    deadlineAt: getBossDeadlineAt(settledBoss).toISOString(),
     calculatedAt: responseAt.toISOString(),
     defeatedAt: settledBoss.defeatedAt ? settledBoss.defeatedAt.toISOString() : null,
+    failedAt: settledBoss.failedAt ? settledBoss.failedAt.toISOString() : null,
     settleEverySeconds: getSettleSeconds()
   };
 };
@@ -345,9 +451,14 @@ const buildStatusPayload = async (currentUserId) => {
     bosses: bossPayloads.sort((left, right) => left.slot - right.slot),
     config: {
       killCount: config.killCount,
+      defenseLosses: config.defenseLosses || 0,
       intensity: config.intensity,
       baseHp: getBaseBossHp(),
-      activeBossCount
+      activeBossCount,
+      worldSteps: config.worldSteps,
+      frontlineStep: config.frontlineStep,
+      bossDeadlineHours: getBossDeadlineHours(),
+      lastCampaignEvent: config.lastCampaignEvent
     }
   };
 };
@@ -373,6 +484,13 @@ router.post('/worldBoss/join', verifyToken, requireRole('student'), async (req, 
     }
 
     const payload = await buildBossPayload(boss, req.user._id, { forceSettle: true });
+
+    if (payload._id !== boss._id.toString()) {
+      return res.json({
+        message: '此討伐目標已結算，新的戰線目標已更新。',
+        ...(await buildStatusPayload(req.user._id))
+      });
+    }
 
     await BossBattle.updateMany(
       { battleKey: { $regex: `^${bossKeyPrefix}-` }, _id: { $ne: boss._id } },
@@ -432,6 +550,11 @@ router.post('/worldBoss/config', verifyToken, requireRole('teacher'), async (req
 
     if (req.body.intensity !== undefined) {
       config.intensity = toPositiveInteger(req.body.intensity, config.intensity);
+    }
+
+    if (req.body.frontlineStep !== undefined) {
+      config.frontlineStep = clampCampaignStep(req.body.frontlineStep);
+      config.lastCampaignEvent = '導師手動調整了兩個世界之間的戰線位置。';
     }
 
     await config.save();

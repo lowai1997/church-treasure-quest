@@ -23,6 +23,27 @@ const bossConfigSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0
+    },
+    worldSteps: {
+      type: Number,
+      default: 25,
+      min: 1,
+      max: 25
+    },
+    frontlineStep: {
+      type: Number,
+      default: 13,
+      min: 0,
+      max: 25
+    },
+    defenseLosses: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    lastCampaignEvent: {
+      type: String,
+      default: '戰線在兩個世界的裂隙中拉鋸。'
     }
   },
   {

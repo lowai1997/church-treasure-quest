@@ -660,6 +660,71 @@ h1 {
   gap: 12px;
 }
 
+.campaign-card {
+  display: grid;
+  gap: 10px;
+}
+
+.frontline-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--blue-800);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.frontline-track {
+  display: grid;
+  grid-template-columns: repeat(26, minmax(8px, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+
+.frontline-step {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  color: transparent;
+  background: rgba(33, 72, 111, 0.12);
+  border: 1px solid rgba(33, 72, 111, 0.12);
+  border-radius: 6px;
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.frontline-step.secured {
+  background: rgba(39, 117, 85, 0.22);
+  border-color: rgba(39, 117, 85, 0.24);
+}
+
+.frontline-step.home,
+.frontline-step.enemy,
+.frontline-step.current {
+  color: #ffffff;
+}
+
+.frontline-step.home {
+  background: var(--blue-800);
+}
+
+.frontline-step.enemy {
+  background: var(--danger);
+}
+
+.frontline-step.current {
+  background: var(--gold-700);
+  box-shadow: 0 0 0 3px rgba(215, 170, 72, 0.26);
+}
+
+.campaign-event {
+  margin: 0;
+  color: var(--blue-800);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
 .boss-health {
   height: 22px;
   overflow: hidden;
