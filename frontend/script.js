@@ -12,6 +12,9 @@ const state = {
   bosses: [],
   bossConfig: null,
   noticeBoard: null,
+  gearImageMap: {},
+  bossImageMap: {},
+  imageMapsLoaded: false,
   weeklyMissions: [],
   weeklyReports: [],
   weeklyMissionWeek: '',
@@ -23,7 +26,6 @@ const state = {
   addGoldAmount: 100,
   boxReveal: null,
   petQuiz: null,
-  upgradeQuiz: null,
   avatarPickerOpen: false,
   busy: false
 };
@@ -208,6 +210,10 @@ const bossImageFor = (boss) => {
   const imageIndex = Math.abs(hashText(boss?.name || '') + Number(boss?.slot || 0)) % bossImageAssets.length;
   return bossImageAssets[imageIndex];
 };
+
+const customImageForName = (map, name = '') => map[String(name || '').trim()] || '';
+const gearImageForItem = (item = {}) => customImageForName(state.gearImageMap, item.name);
+const bossDisplayImageFor = (boss = {}) => customImageForName(state.bossImageMap, boss.name) || bossImageFor(boss);
 
 const itemIcon = () => `
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -636,7 +642,6 @@ const clearSession = () => {
   state.incomingTrades = [];
   state.outgoingTrades = [];
   state.petCatalog = [];
-  state.upgradeQuiz = null;
   state.avatarPickerOpen = false;
   localStorage.removeItem('ctqToken');
 };
@@ -748,7 +753,6 @@ const renderShell = () => {
       </nav>
       ${state.boxReveal ? renderBoxReveal() : ''}
       ${state.petQuiz ? renderPetQuiz() : ''}
-      ${state.upgradeQuiz ? renderUpgradeQuiz() : ''}
       ${state.avatarPickerOpen ? renderAvatarModal() : ''}
     </section>
   `;
@@ -819,7 +823,7 @@ const renderBoxReveal = () => {
           <span class="box-light"></span>
         </div>
         <div class="reveal-item">
-          <div class="item-icon">${slotIcon(reward.type, reward.name, reward.imageUrl)}</div>
+          <div class="item-icon">${slotIcon(reward.type, reward.name, gearImageForItem(reward))}</div>
           <span class="reveal-rarity">${escapeHtml(rarityLabels[rarity] || rarity)}</span>
           <strong>${escapeHtml(reward.name || '神秘裝備')}</strong>
           <span>${escapeHtml(reward.type || '裝備')} · 戰力 +${formatNumber(reward.power)}</span>
@@ -842,7 +846,7 @@ const renderPetQuiz = () => {
         <div class="card-header">
           <div>
             <h3>寵物升級考驗</h3>
-            <p>答對後才會消耗金幣並提升寵物戰力。</p>
+            <p>答錯也會消耗 ${formatNumber(feedPetCost)} 金幣與本次升級機會。</p>
           </div>
           <button class="icon-button" type="button" data-action="cancel-pet-question" aria-label="關閉">關閉</button>
         </div>
@@ -852,42 +856,6 @@ const renderPetQuiz = () => {
             .map(
               (option) => `
                 <button class="mini-button quiz-option" type="button" data-action="answer-pet-question" data-answer="${escapeAttr(option.key)}">
-                  <span>${escapeHtml(option.key)}</span>
-                  ${escapeHtml(option.text)}
-                </button>
-              `
-            )
-            .join('')}
-        </div>
-      </section>
-    </div>
-  `;
-};
-
-const renderUpgradeQuiz = () => {
-  const quiz = state.upgradeQuiz?.question;
-  const item = state.upgradeQuiz?.item;
-
-  if (!quiz) {
-    return '';
-  }
-
-  return `
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="裝備升級問題">
-      <section class="quiz-modal card">
-        <div class="card-header">
-          <div>
-            <h3>裝備升級考驗</h3>
-            <p>${item ? `${itemNameWithUpgrade(item, { alwaysShow: true })} · ` : ''}答錯會消耗本次升級機會與 ${formatNumber(upgradeCost)} 金幣。</p>
-          </div>
-          <button class="icon-button" type="button" data-action="cancel-upgrade-question" aria-label="關閉">關閉</button>
-        </div>
-        <strong class="quiz-question">${escapeHtml(quiz.question)}</strong>
-        <div class="quiz-options">
-          ${(quiz.options || [])
-            .map(
-              (option) => `
-                <button class="mini-button quiz-option" type="button" data-action="answer-upgrade-question" data-answer="${escapeAttr(option.key)}">
                   <span>${escapeHtml(option.key)}</span>
                   ${escapeHtml(option.text)}
                 </button>
@@ -1005,7 +973,7 @@ const renderItemCard = (item) => {
 
   return `
     <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type, item.name, item.imageUrl)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name, gearImageForItem(item))}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -1127,7 +1095,7 @@ const renderInventoryItem = (item, equippedIds) => {
 
   return `
     <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type, item.name, item.imageUrl)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name, gearImageForItem(item))}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -1773,7 +1741,7 @@ const renderBossCard = (boss) => {
       </div>
       <div class="boss-portrait">
         <div class="boss-portrait-fallback" aria-hidden="true">${crestIcon()}</div>
-        ${assetImage(boss.imageUrl || bossImageFor(boss), boss.name, boss.imageUrl ? bossImageFor(boss) : '')}
+        ${assetImage(bossDisplayImageFor(boss), boss.name)}
       </div>
       <div class="boss-health" aria-label="挑戰進度">
         <div class="boss-health-fill" data-boss-hp-bar="${escapeAttr(boss._id)}" style="width: ${bossHpPercent(boss)}%"></div>
@@ -1847,7 +1815,7 @@ const renderUpgrade = () => {
   return `
     <section class="view-title">
       <h2>裝備升級</h2>
-      <p>每次升級前需要答對一題聖經問題。答錯會消耗本次升級機會與 ${formatNumber(upgradeCost)} 金幣；答對後才會進入升級判定。</p>
+      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；成功率會隨等級逐步下降。</p>
     </section>
 
     <section class="stats-grid">
@@ -1873,7 +1841,7 @@ const renderUpgradeCard = (item) => {
 
   return `
     <article class="item-card upgrade-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type, item.name, item.imageUrl)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name, gearImageForItem(item))}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item, { alwaysShow: true })}</h3>
         <div class="item-meta">
@@ -1883,7 +1851,7 @@ const renderUpgradeCard = (item) => {
           <span>費用 ${formatNumber(upgradeCost)}</span>
         </div>
         <div class="item-actions">
-          <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '回答問題並升級' : '金幣不足'}</button>
+          <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '裝備 +1' : '金幣不足'}</button>
         </div>
       </div>
     </article>
@@ -1907,7 +1875,7 @@ const renderPets = () => {
   return `
     <section class="view-title">
       <h2>寵物</h2>
-      <p>寵物戰力會加入總戰力。每次升級需要答對一題聖經問題，成功後消耗 ${formatNumber(feedPetCost)} 金幣並提升 ${formatNumber(petPowerGain)} 戰力。</p>
+      <p>寵物戰力會加入總戰力。每次升級前需要答對一題聖經問題；答錯會消耗 ${formatNumber(feedPetCost)} 金幣與本次升級機會，答對則提升 ${formatNumber(petPowerGain)} 戰力。</p>
     </section>
 
     <section class="stats-grid">
@@ -2178,6 +2146,35 @@ const loadItems = async () => {
   state.storeDate = data.refreshDate || '';
 };
 
+const loadJsonAsset = async (path) => {
+  try {
+    const response = await fetch(path, { cache: 'no-store' });
+
+    if (!response.ok) {
+      return {};
+    }
+
+    return await response.json();
+  } catch (error) {
+    return {};
+  }
+};
+
+const loadImageMaps = async () => {
+  if (state.imageMapsLoaded) {
+    return;
+  }
+
+  const [gearImageMap, bossImageMap] = await Promise.all([
+    loadJsonAsset('assets/custom/gear-images.json'),
+    loadJsonAsset('assets/custom/boss-images.json')
+  ]);
+
+  state.gearImageMap = gearImageMap && typeof gearImageMap === 'object' ? gearImageMap : {};
+  state.bossImageMap = bossImageMap && typeof bossImageMap === 'object' ? bossImageMap : {};
+  state.imageMapsLoaded = true;
+};
+
 const loadRank = async () => {
   const data = await api('/api/getRank');
   state.rank = data.rank;
@@ -2233,6 +2230,7 @@ const refreshViewData = async () => {
   }
 
   await loadMe();
+  await loadImageMaps();
 
   if (state.view === 'shop') {
     await loadItems();
@@ -2490,44 +2488,12 @@ app.addEventListener('click', async (event) => {
 
   if (action === 'upgrade-item') {
     const inventoryId = actionButton.dataset.inventoryId;
-    const item = (state.player.items || []).find((candidate) => candidate.inventoryId === inventoryId);
-
-    try {
-      const data = await api('/api/upgradeQuestion');
-      state.upgradeQuiz = {
-        inventoryId,
-        item,
-        question: data.question
-      };
-      renderShell();
-    } catch (error) {
-      showToast(error.message, 'error');
-    }
-    return;
-  }
-
-  if (action === 'cancel-upgrade-question') {
-    state.upgradeQuiz = null;
-    renderShell();
-    return;
-  }
-
-  if (action === 'answer-upgrade-question') {
-    const quiz = state.upgradeQuiz;
-    const result = await runAction(() =>
+    await runAction(() =>
       api('/api/upgradeItem', {
         method: 'POST',
-        body: JSON.stringify({
-          inventoryId: quiz?.inventoryId,
-          questionId: quiz?.question?.id,
-          answer: actionButton.dataset.answer
-        })
+        body: JSON.stringify({ inventoryId })
       })
     );
-    if (result) {
-      state.upgradeQuiz = null;
-      renderShell();
-    }
     return;
   }
 

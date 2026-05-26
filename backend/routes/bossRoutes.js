@@ -1,7 +1,6 @@
 import express from 'express';
 import BossBattle from '../models/BossBattle.js';
 import BossConfig from '../models/BossConfig.js';
-import BossImage from '../models/BossImage.js';
 import Player from '../models/Player.js';
 import { requireRole, verifyToken } from '../middleware/auth.js';
 
@@ -16,7 +15,6 @@ const bossVictoryReward = 500;
 const defaultEmergencyTaskTitle = '緊急守護任務';
 const defaultEmergencyTaskReward = 500;
 const maxEmergencyDifficulty = 5;
-const maxStoredImageLength = 200000;
 
 const bossNames = [
   '墮翼‧阿茲撒爾',
@@ -171,22 +169,6 @@ const normalizeEmergencyTask = (task = {}) => {
     issuedAt: issuedAt && Number.isFinite(issuedAt.getTime()) ? issuedAt : null,
     issuedBy
   };
-};
-
-const normalizeImageUrl = (value, { allowEmpty = true } = {}) => {
-  const imageUrl = String(value || '').trim();
-
-  if (!imageUrl) {
-    return allowEmpty ? '' : null;
-  }
-
-  const allowed =
-    imageUrl.length <= maxStoredImageLength &&
-    (/^(assets|\/assets)\//.test(imageUrl) ||
-      /^https:\/\/.+/i.test(imageUrl) ||
-      /^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=]+$/i.test(imageUrl));
-
-  return allowed ? imageUrl : null;
 };
 
 const addBossDeadline = (date, config = null) => new Date(date.getTime() + getBossDeadlineHours(config) * 60 * 60 * 1000);
@@ -658,14 +640,12 @@ const buildBossPayload = async (boss, currentUserId, { forceSettle = false } = {
 
   const participantIds = new Set(powerSnapshot.participants.map((player) => player._id));
   const completionEstimate = buildCompletionEstimate(liveHp, powerSnapshot.totalPower, responseAt, deadlineAt);
-  const bossImage = await BossImage.findOne({ name: settledBoss.name });
 
   return {
     _id: settledBoss._id.toString(),
     battleKey: settledBoss.battleKey,
     slot: settledBoss.slot,
     name: settledBoss.name,
-    imageUrl: bossImage?.imageUrl || '',
     hp: liveHp,
     maxHp: settledBoss.maxHp,
     intensity: settledBoss.intensity,
@@ -784,41 +764,6 @@ router.post('/worldBoss/reset', verifyToken, requireRole('teacher'), async (req,
     return res.json({
       message: slot === null ? '已重置全部討伐目標。' : '已重置此討伐目標。',
       ...(await buildStatusPayload(req.user._id))
-    });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.patch('/bossImages', verifyToken, requireRole('teacher'), async (req, res, next) => {
-  try {
-    const name = String(req.body.name || '').trim();
-    const imageUrl = normalizeImageUrl(req.body.imageUrl);
-
-    if (!name) {
-      return res.status(400).json({ message: '請提供 Boss 名稱。' });
-    }
-
-    if (imageUrl === null) {
-      return res.status(400).json({ message: '圖片格式不正確，請使用 assets/ 路徑、HTTPS 圖片或小於 200KB 的 PNG/JPG/WebP。' });
-    }
-
-    if (!imageUrl) {
-      await BossImage.deleteOne({ name });
-      return res.json({
-        message: `已移除 ${name} 的 Boss 圖片。`
-      });
-    }
-
-    const bossImage = await BossImage.findOneAndUpdate(
-      { name },
-      { $set: { imageUrl } },
-      { upsert: true, new: true }
-    );
-
-    return res.json({
-      message: `已更新 ${name} 的 Boss 圖片。`,
-      bossImage
     });
   } catch (error) {
     return next(error);

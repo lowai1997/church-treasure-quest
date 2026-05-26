@@ -23,12 +23,6 @@ const playerItemSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
-    imageUrl: {
-      type: String,
-      default: '',
-      trim: true,
-      maxlength: 200000
-    },
     upgradeLevel: {
       type: Number,
       default: 0,

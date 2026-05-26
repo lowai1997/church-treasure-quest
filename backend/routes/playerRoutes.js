@@ -125,7 +125,6 @@ const createInventoryItem = (item) => ({
   rarity: item.rarity,
   price: item.price,
   power: item.power,
-  imageUrl: item.imageUrl || '',
   upgradeLevel: 0
 });
 
@@ -136,7 +135,6 @@ const createTradeItemSnapshot = (item) => ({
   rarity: item.rarity,
   price: item.price,
   power: item.power,
-  imageUrl: item.imageUrl || '',
   upgradeLevel: item.upgradeLevel || 0
 });
 
@@ -252,36 +250,6 @@ router.post('/profilePhoto', verifyToken, async (req, res, next) => {
     return res.json({
       message: imageUrl ? '玩家頭像照片已更新。' : '玩家頭像照片已移除。',
       player: player.toSafeObject()
-    });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.patch('/items/image', verifyToken, requireRole('teacher'), async (req, res, next) => {
-  try {
-    const name = String(req.body.name || '').trim();
-    const imageUrl = normalizeImageUrl(req.body.imageUrl);
-
-    if (!name) {
-      return res.status(400).json({ message: '請提供裝備名稱。' });
-    }
-
-    if (imageUrl === null) {
-      return res.status(400).json({ message: '圖片格式不正確，請使用 assets/ 路徑、HTTPS 圖片或小於 200KB 的 PNG/JPG/WebP。' });
-    }
-
-    const item = await Item.findOneAndUpdate({ name }, { $set: { imageUrl } }, { new: true });
-
-    if (!item) {
-      return res.status(404).json({ message: '找不到此裝備。' });
-    }
-
-    await Player.updateMany({ 'items.name': name }, { $set: { 'items.$[matchedItem].imageUrl': imageUrl } }, { arrayFilters: [{ 'matchedItem.name': name }] });
-
-    return res.json({
-      message: `已更新 ${name} 的圖片路徑。`,
-      item
     });
   } catch (error) {
     return next(error);
@@ -499,25 +467,6 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
       return res.status(400).json({ message: '金幣不足，無法升級裝備。' });
     }
 
-    if (!req.body.questionId || !req.body.answer) {
-      return res.status(400).json({ message: '升級裝備前需要先回答一題聖經問題。' });
-    }
-
-    if (!isBibleAnswerCorrect(req.body.questionId, req.body.answer)) {
-      player.gold -= upgradeCost;
-      player.recalculatePower();
-      await player.save();
-
-      return res.json({
-        message: `答案不正確，已消耗 ${upgradeCost} 金幣與本次升級機會。`,
-        success: false,
-        answerCorrect: false,
-        successRate: 0,
-        mode: 'level',
-        player: player.toSafeObject()
-      });
-    }
-
     const successRate = getUpgradeSuccessRate(inventoryItem.upgradeLevel);
     const success = Math.random() < successRate;
     player.gold -= upgradeCost;
@@ -535,7 +484,6 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
         ? `升級成功，${inventoryItem.name} 已成為 +${inventoryItem.upgradeLevel}。`
         : `升級失敗，成功率為 ${Math.round(successRate * 100)}%。`,
       success,
-      answerCorrect: true,
       successRate,
       mode: 'level',
       player: player.toSafeObject()
@@ -543,10 +491,6 @@ router.post('/upgradeItem', verifyToken, requireRole('student'), async (req, res
   } catch (error) {
     return next(error);
   }
-});
-
-router.get('/upgradeQuestion', verifyToken, requireRole('student'), async (req, res) => {
-  return res.json({ question: drawBibleQuestion() });
 });
 
 router.get('/petCatalog', verifyToken, async (req, res) => {
@@ -597,8 +541,20 @@ router.post('/feedPet', verifyToken, requireRole('student'), async (req, res, ne
       return res.status(400).json({ message: '金幣不足，無法餵食寵物。' });
     }
 
+    if (!req.body.questionId || !req.body.answer) {
+      return res.status(400).json({ message: '寵物升級前需要先回答一題聖經問題。' });
+    }
+
     if (!isBibleAnswerCorrect(req.body.questionId, req.body.answer)) {
-      return res.status(400).json({ message: '答案不正確，寵物升級未成功。' });
+      player.gold -= feedPetCost;
+      await player.save();
+
+      return res.json({
+        message: `答案不正確，已消耗 ${feedPetCost} 金幣與本次寵物升級機會。`,
+        success: false,
+        answerCorrect: false,
+        player: player.toSafeObject()
+      });
     }
 
     player.gold -= feedPetCost;
@@ -609,6 +565,8 @@ router.post('/feedPet', verifyToken, requireRole('student'), async (req, res, ne
 
     return res.json({
       message: `${pet.name} 升到 Lv.${pet.level}。`,
+      success: true,
+      answerCorrect: true,
       player: player.toSafeObject()
     });
   } catch (error) {

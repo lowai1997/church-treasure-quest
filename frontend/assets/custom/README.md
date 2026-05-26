@@ -1,8 +1,8 @@
-Place custom uploaded game images here before committing them.
+Place custom game images here before committing them.
 
-Suggested paths:
+The game reads local JSON maps instead of storing gear or boss image paths in the database:
 
-- `weapons/your-weapon-file.png`
-- `bosses/your-boss-file.png`
+- `gear-images.json` maps exact gear names to image paths.
+- `boss-images.json` maps exact boss names to image paths.
 
-Use those files in the database as `assets/custom/weapons/your-weapon-file.png` or `assets/custom/bosses/your-boss-file.png`.
+The setup tool writes images into `gear/` or `bosses/` and updates the correct JSON file for you.
