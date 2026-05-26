@@ -919,8 +919,6 @@ const renderShop = () => {
 
     <section class="stats-grid" aria-label="玩家狀態">
       <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
-      <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.equipmentPower)}</strong></div>
-      <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
     </section>
 
     <section class="card">
@@ -932,24 +930,6 @@ const renderShop = () => {
         <span class="price-pill">${formatNumber(mysteryBoxPrice)}</span>
       </div>
       <button class="primary-button" type="button" data-action="open-box">開啟 1 次</button>
-    </section>
-
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3>我的背包</h3>
-          <p>${state.player.items.length ? `已收集 ${state.player.items.length} 件裝備` : '尚未取得裝備'}</p>
-        </div>
-      </div>
-      <div class="inventory-list">
-        ${
-          state.player.items.length
-            ? state.player.items
-                .map((item) => `<span class="inventory-tag">${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}</span>`)
-                .join('')
-            : '<span class="inventory-tag">完成星光任務後再來採購</span>'
-        }
-      </div>
     </section>
 
     <section class="items-grid" aria-label="商店裝備">
@@ -1315,10 +1295,6 @@ const renderStudentWeeklyMissionCard = (mission) => {
           `
           : `
             <form class="weekly-report-form" data-weekly-report-form="${escapeAttr(mission._id)}">
-              <div class="field">
-                <label for="weekly-note-${escapeAttr(mission._id)}">完成回報（可選）</label>
-                <textarea id="weekly-note-${escapeAttr(mission._id)}" name="note" rows="3" maxlength="500" placeholder="例如：已完成本週背誦 / 服事 / 靈修任務"></textarea>
-              </div>
               <button class="primary-button" type="submit">回報完成</button>
             </form>
           `
@@ -1399,14 +1375,17 @@ const renderTeacherWeeklyMissionCard = (mission) => `
       <input name="active" type="checkbox" ${mission.active ? 'checked' : ''} />
       <span>${mission.active ? '啟用中' : '已停用'}</span>
     </label>
-    <button class="mini-button" type="submit">儲存任務</button>
+    <div class="item-actions">
+      <button class="mini-button" type="submit">儲存任務</button>
+      <button class="mini-button danger-mini" type="button" data-action="delete-weekly-mission" data-mission-id="${escapeAttr(mission._id)}" data-mission-title="${escapeAttr(mission.title)}">移除任務</button>
+    </div>
   </form>
 `;
 
 const renderWeeklyReportRow = (report) => `
   <div class="notice-row ${report.status === 'approved' ? 'contribution-row' : report.status === 'rejected' ? 'danger-row' : ''}">
     <strong>${escapeHtml(report.playerName)} · ${escapeHtml(report.missionTitle || '每週任務')}</strong>
-    <span>${weeklyStatusLabel(report.status)} · 獎勵 ${formatNumber(report.reward)} Token${report.note ? ` · ${escapeHtml(report.note)}` : ''}</span>
+    <span>${weeklyStatusLabel(report.status)} · 獎勵 ${formatNumber(report.reward)} Token</span>
     ${
       report.status === 'pending'
         ? `
@@ -2569,6 +2548,23 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'delete-weekly-mission') {
+    const missionId = actionButton.dataset.missionId;
+    const missionTitle = actionButton.dataset.missionTitle || '每週任務';
+
+    if (!window.confirm(`確定要移除每週任務「${missionTitle}」嗎？相關回報也會一併移除。`)) {
+      return;
+    }
+
+    await runAction(() =>
+      api(`/api/weeklyMissions/${missionId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({})
+      })
+    );
+    return;
+  }
+
   if (action === 'teacher-add-pet') {
     const playerId = actionButton.dataset.playerId;
     const petId = document.querySelector(`[data-teacher-pet-select="${playerId}"]`)?.value;
@@ -2780,14 +2776,10 @@ app.addEventListener('submit', async (event) => {
   const weeklyReportForm = event.target.closest('[data-weekly-report-form]');
 
   if (weeklyReportForm) {
-    const formData = new FormData(weeklyReportForm);
-
     await runAction(() =>
       api(`/api/weeklyMissions/${weeklyReportForm.dataset.weeklyReportForm}/report`, {
         method: 'POST',
-        body: JSON.stringify({
-          note: formData.get('note')
-        })
+        body: JSON.stringify({})
       })
     );
     return;

@@ -46,7 +46,6 @@ const publicReport = (report) => ({
   playerName: report.playerName,
   weekKey: report.weekKey,
   status: report.status,
-  note: report.note || '',
   reward: Number(report.reward || 0),
   reportedAt: report.reportedAt ? report.reportedAt.toISOString() : null,
   reviewedAt: report.reviewedAt ? report.reviewedAt.toISOString() : null,
@@ -62,8 +61,8 @@ router.get('/weeklyMissions', verifyToken, async (req, res, next) => {
     const missionIds = missions.map((mission) => mission._id);
     const reportFilter =
       req.user.role === 'teacher'
-        ? { mission: { $in: missionIds }, weekKey }
-        : { mission: { $in: missionIds }, weekKey, player: req.user._id };
+        ? { mission: { $in: missionIds }, weekKey, status: { $in: ['pending', 'approved'] } }
+        : { mission: { $in: missionIds }, weekKey, player: req.user._id, status: { $in: ['pending', 'approved'] } };
     const reports = await WeeklyMissionReport.find(reportFilter)
       .populate('mission', 'title')
       .sort({ reportedAt: -1 });
@@ -140,6 +139,25 @@ router.patch('/weeklyMissions/:missionId', verifyToken, requireRole('teacher'), 
   }
 });
 
+router.delete('/weeklyMissions/:missionId', verifyToken, requireRole('teacher'), async (req, res, next) => {
+  try {
+    const mission = await WeeklyMission.findById(req.params.missionId);
+
+    if (!mission) {
+      return res.status(404).json({ message: '找不到此每週任務。' });
+    }
+
+    await WeeklyMissionReport.deleteMany({ mission: mission._id });
+    await mission.deleteOne();
+
+    return res.json({
+      message: '每週任務已移除。'
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post('/weeklyMissions/:missionId/report', verifyToken, requireRole('student'), async (req, res, next) => {
   try {
     const mission = await WeeklyMission.findOne({ _id: req.params.missionId, active: true });
@@ -149,14 +167,26 @@ router.post('/weeklyMissions/:missionId/report', verifyToken, requireRole('stude
     }
 
     const weekKey = getWeekKey();
+    await WeeklyMissionReport.deleteMany({
+      mission: mission._id,
+      player: req.user._id,
+      weekKey,
+      status: 'rejected'
+    });
+
     const existingReport = await WeeklyMissionReport.findOne({
       mission: mission._id,
       player: req.user._id,
-      weekKey
+      weekKey,
+      status: { $in: ['pending', 'approved'] }
     });
 
     if (existingReport) {
-      return res.status(400).json({ message: '你本週已回報過此任務，請等待導師審核。' });
+      const message =
+        existingReport.status === 'approved'
+          ? '你本週已完成此任務。'
+          : '你本週已回報過此任務，請等待導師審核。';
+      return res.status(400).json({ message });
     }
 
     const report = await WeeklyMissionReport.create({
@@ -164,7 +194,6 @@ router.post('/weeklyMissions/:missionId/report', verifyToken, requireRole('stude
       player: req.user._id,
       playerName: req.user.name,
       weekKey,
-      note: sanitizeText(req.body.note, '', 500),
       reward: Number(mission.reward || 0)
     });
 
@@ -235,15 +264,13 @@ router.post('/weeklyMissionReports/:reportId/reject', verifyToken, requireRole('
       return res.status(400).json({ message: '已發獎的回報不能改為未通過。' });
     }
 
-    report.status = 'rejected';
-    report.reviewedAt = new Date();
-    report.reviewedBy = req.user._id;
-    report.reviewedByName = req.user.name;
-    await report.save();
+    const resetReport = publicReport(report);
+    await report.deleteOne();
 
     return res.json({
-      message: '已標記為未通過。',
-      report: publicReport(report)
+      message: '已退回回報，團員可以重新完成並提交此任務。',
+      report: resetReport,
+      reset: true
     });
   } catch (error) {
     return next(error);

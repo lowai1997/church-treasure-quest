@@ -108,10 +108,10 @@ http://localhost:3000
 | `/api/unlockPetSlot` | POST | 團員花費金幣解鎖額外寵物欄位 |
 | `/api/getRank` | GET | 依照裝備與寵物總戰力排序玩家 |
 | `/api/weeklyMissions` | GET / POST | 取得每週任務；導師可建立每週重複任務 |
-| `/api/weeklyMissions/:missionId` | PATCH | 導師更新每週任務內容、獎勵與啟用狀態 |
-| `/api/weeklyMissions/:missionId/report` | POST | 團員每週回報一次指定任務完成 |
+| `/api/weeklyMissions/:missionId` | PATCH / DELETE | 導師更新或移除每週任務內容、獎勵與啟用狀態 |
+| `/api/weeklyMissions/:missionId/report` | POST | 團員每週提交一次指定任務完成 |
 | `/api/weeklyMissionReports/:reportId/approve` | POST | 導師通過回報並發放獎勵 |
-| `/api/weeklyMissionReports/:reportId/reject` | POST | 導師退回回報 |
+| `/api/weeklyMissionReports/:reportId/reject` | POST | 導師退回回報，團員可重新完成並提交 |
 | `/api/worldBoss/status` | GET | 取得討伐三隻 Boss、預計完成時間、公告板、戰線位置、擊殺數、強度、期限、血量、參戰名單與合計戰力 |
 | `/api/worldBoss/join` | POST | 團員選擇其中一隻討伐 Boss 加入戰鬥 |
 | `/api/worldBoss/reset` | POST | 導師重置單一或全部討伐 Boss |
