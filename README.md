@@ -100,16 +100,25 @@ http://localhost:3000
 | `/api/trades/:tradeId/accept` | POST | 收到邀請的團員選擇自己的裝備並接受交換 |
 | `/api/trades/:tradeId/decline` | POST | 收到申請的團員拒絕交換 |
 | `/api/trades/:tradeId/cancel` | POST | 送出申請的團員取消交換 |
-| `/api/upgradeItem` | POST | 團員花費金幣嘗試升級武器 |
+| `/api/profilePhoto` | POST | 團員上傳或移除個人照片，會顯示在頭像與排行榜 |
+| `/api/items/image` | PATCH | 導師用裝備名稱更新裝備圖片路徑，並同步既有背包裝備 |
+| `/api/upgradeQuestion` | GET | 團員升級裝備前抽一題聖經問題 |
+| `/api/upgradeItem` | POST | 團員答對聖經問題後花費金幣嘗試升級裝備 |
 | `/api/petCatalog` | GET | 取得可領養寵物清單 |
 | `/api/adoptPet` | POST | 團員領養寵物 |
 | `/api/feedPet` | POST | 團員餵食寵物並提升寵物戰力 |
 | `/api/unlockPetSlot` | POST | 團員花費金幣解鎖額外寵物欄位 |
 | `/api/getRank` | GET | 依照裝備與寵物總戰力排序玩家 |
+| `/api/weeklyMissions` | GET / POST | 取得每週任務；導師可建立每週重複任務 |
+| `/api/weeklyMissions/:missionId` | PATCH | 導師更新每週任務內容、獎勵與啟用狀態 |
+| `/api/weeklyMissions/:missionId/report` | POST | 團員每週回報一次指定任務完成 |
+| `/api/weeklyMissionReports/:reportId/approve` | POST | 導師通過回報並發放獎勵 |
+| `/api/weeklyMissionReports/:reportId/reject` | POST | 導師退回回報 |
 | `/api/worldBoss/status` | GET | 取得討伐三隻 Boss、預計完成時間、公告板、戰線位置、擊殺數、強度、期限、血量、參戰名單與合計戰力 |
 | `/api/worldBoss/join` | POST | 團員選擇其中一隻討伐 Boss 加入戰鬥 |
 | `/api/worldBoss/reset` | POST | 導師重置單一或全部討伐 Boss |
 | `/api/worldBoss/config` | POST | 導師調整討伐擊殺數、Boss 強度、Boss 時限與戰線位置 |
+| `/api/bossImages` | PATCH | 導師用 Boss 名稱更新或移除 Boss 圖片 |
 | `/api/teacher/pets/add` | POST | 導師替團員新增活動獎勵寵物 |
 | `/api/teacher/pets/update` | POST | 導師修改團員寵物資料 |
 | `/api/removePlayer` | DELETE | 導師刪除團員玩家帳號 |
@@ -123,7 +132,8 @@ http://localhost:3000
 - 神秘盒固定 100 金幣一次，機率為 N 50%、R 25%、S 15%、SS 8%、SSS 2%。
 - 裝備賣出價格：N 30、R 50、S 100、SS 250、SSS 500 金幣。
 - 裝備交換採邀請制：發起者只選自己的裝備與對方玩家，收到邀請者接受時再選自己要交換的裝備，避免同名裝備造成衝突。
-- 武器可升級至 +9；每次嘗試花費 50 金幣，升級成功率每級降低 10%，成功後該武器戰力 +10。升級後的武器會在各頁面顯示 `+x`，交換給其他團員時也會保留升級等級。
+- 裝備可升級至 +9；每次升級前需要答對一題聖經問題。答錯會消耗 50 金幣與本次升級機會，不會提升裝備；答對後才會進入成功率判定，成功後該裝備戰力 +10。升級後的裝備會在各頁面顯示 `+x`，交換給其他團員時也會保留升級等級。
+- 每週任務由導師建立，內容與獎勵可自行設定，並會按週重複。團員同一任務每週只能回報一次；導師通過後會自動發放獎勵到團員帳戶。
 - 每位玩家預設 1 個寵物欄位，可用 1000 金幣各解鎖第 2、第 3 欄；寵物戰力會加入玩家總戰力。
 - 裝備欄位限制：2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。
 
@@ -246,6 +256,46 @@ SSS 2% x 120 = 2.4
 ```bash
 npm start
 ```
+
+## 圖片更新方法
+
+個人照片已經內建在遊戲畫面：登入後按左上角頭像，選「上傳個人照片」，系統會自動縮圖並存到玩家資料，排行榜也會顯示同一張照片。
+
+裝備與 Boss 圖片建議用「圖片檔放在網站 assets + 資料庫存路徑」的方式，最容易維護：
+
+1. 把圖片放入專案，例如：
+
+```text
+frontend/assets/custom/weapons/david-stone-blade.png
+frontend/assets/custom/bosses/azazel.png
+```
+
+2. 圖片上傳到 GitHub 並重新部署後，路徑會是：
+
+```text
+assets/custom/weapons/david-stone-blade.png
+assets/custom/bosses/azazel.png
+```
+
+3. 以導師帳號登入網站，從瀏覽器開發者工具的 Console 取得 token：
+
+```js
+localStorage.getItem('ctqToken')
+```
+
+4. 用 PowerShell 更新裝備圖片。把 `YOUR_SITE`、`YOUR_TOKEN`、裝備名稱與圖片路徑換成你的資料：
+
+```powershell
+curl.exe -X PATCH "https://YOUR_SITE/api/items/image" -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"name\":\"大衛之石刃\",\"imageUrl\":\"assets/custom/weapons/david-stone-blade.png\"}"
+```
+
+5. 用 PowerShell 更新 Boss 圖片。Boss 名稱要與遊戲內顯示完全一樣：
+
+```powershell
+curl.exe -X PATCH "https://YOUR_SITE/api/bossImages" -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"name\":\"墮翼‧阿茲撒爾\",\"imageUrl\":\"assets/custom/bosses/azazel.png\"}"
+```
+
+6. 若要移除圖片，把 `imageUrl` 改成空字串。API 也接受 HTTPS 圖片連結，或小於 200KB 的 PNG/JPG/WebP data URL；但正式使用建議放 assets 路徑，比較不會塞爆資料庫。
 
 ## 測試檢查
 

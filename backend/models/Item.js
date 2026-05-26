@@ -26,6 +26,12 @@ const itemSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0
+    },
+    imageUrl: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 200000
     }
   },
   {

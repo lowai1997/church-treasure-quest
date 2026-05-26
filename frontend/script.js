@@ -12,6 +12,9 @@ const state = {
   bosses: [],
   bossConfig: null,
   noticeBoard: null,
+  weeklyMissions: [],
+  weeklyReports: [],
+  weeklyMissionWeek: '',
   tradePlayers: [],
   incomingTrades: [],
   outgoingTrades: [],
@@ -20,6 +23,7 @@ const state = {
   addGoldAmount: 100,
   boxReveal: null,
   petQuiz: null,
+  upgradeQuiz: null,
   avatarPickerOpen: false,
   busy: false
 };
@@ -42,7 +46,6 @@ const feedPetCost = 50;
 const petPowerGain = 10;
 const unlockPetSlotCost = 1000;
 const maxPetSlots = 3;
-const raritySteps = ['S', 'SS', 'SSS'];
 const rarityLabels = { N: '普通', R: '稀有', S: '超稀有', SS: '傳說', SSS: '神話' };
 const avatarOptions = [
   { id: 'male-1', label: '星殿少年' },
@@ -262,7 +265,7 @@ const weaponIconFor = (name = '') => {
   `;
 };
 
-const slotIcon = (type, name = '') => {
+const slotIcon = (type, name = '', imageUrl = '') => {
   const slotKey = typeToSlot[type] || type;
   const icons = {
     weapon: weaponIconFor(name),
@@ -307,7 +310,7 @@ const slotIcon = (type, name = '') => {
   return `
     <span class="asset-icon gear-asset">
       <span class="asset-fallback" aria-hidden="true">${icons[slotKey] || itemIcon()}</span>
-      ${assetImage(imageAsset.src, '', imageAsset.fallbackSrc)}
+      ${assetImage(imageUrl || imageAsset.src, '', imageUrl ? '' : imageAsset.fallbackSrc)}
     </span>
   `;
 };
@@ -354,6 +357,13 @@ const avatarIcon = (avatar = 'male-1') => `
   <span class="asset-icon avatar-asset">
     <span class="asset-fallback" aria-hidden="true">${avatarFallbackIcon(avatar)}</span>
     ${assetImage(avatarImageFor(avatar))}
+  </span>
+`;
+
+const playerAvatarIcon = (player = {}) => `
+  <span class="asset-icon avatar-asset">
+    <span class="asset-fallback" aria-hidden="true">${avatarFallbackIcon(player.avatar || 'male-1')}</span>
+    ${assetImage(player.photoUrl || avatarImageFor(player.avatar || 'male-1'))}
   </span>
 `;
 
@@ -577,6 +587,32 @@ const api = async (path, options = {}) => {
   return data;
 };
 
+const resizeImageFile = (file, { maxSize = 320, quality = 0.86 } = {}) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error('無法讀取圖片。'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('圖片格式不支援。'));
+      image.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      image.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+
 const setSession = ({ token, player }) => {
   state.token = token;
   state.player = player;
@@ -593,10 +629,14 @@ const clearSession = () => {
   state.bosses = [];
   state.bossConfig = null;
   state.noticeBoard = null;
+  state.weeklyMissions = [];
+  state.weeklyReports = [];
+  state.weeklyMissionWeek = '';
   state.tradePlayers = [];
   state.incomingTrades = [];
   state.outgoingTrades = [];
   state.petCatalog = [];
+  state.upgradeQuiz = null;
   state.avatarPickerOpen = false;
   localStorage.removeItem('ctqToken');
 };
@@ -678,7 +718,7 @@ const renderShell = () => {
             aria-haspopup="dialog"
             aria-expanded="${state.avatarPickerOpen ? 'true' : 'false'}"
           >
-            ${avatarIcon(state.player.avatar || 'male-1')}
+            ${playerAvatarIcon(state.player)}
           </button>
           <div class="player-chip">
             <span class="player-name">${escapeHtml(state.player.name)}</span>
@@ -708,6 +748,7 @@ const renderShell = () => {
       </nav>
       ${state.boxReveal ? renderBoxReveal() : ''}
       ${state.petQuiz ? renderPetQuiz() : ''}
+      ${state.upgradeQuiz ? renderUpgradeQuiz() : ''}
       ${state.avatarPickerOpen ? renderAvatarModal() : ''}
     </section>
   `;
@@ -752,6 +793,14 @@ const renderAvatarModal = () => `
         <button class="icon-button" type="button" data-action="close-avatar-picker" aria-label="關閉">關閉</button>
       </div>
       ${renderAvatarPicker(state.player.avatar || 'male-1', { mode: 'profile' })}
+      <div class="photo-upload-box">
+        <label class="mini-button file-button">
+          上傳個人照片
+          <input type="file" accept="image/png,image/jpeg,image/webp" data-profile-photo-input />
+        </label>
+        <button class="mini-button danger-mini" type="button" data-action="remove-profile-photo" ${state.player.photoUrl ? '' : 'disabled'}>移除照片</button>
+        <p>照片會縮成小頭像並顯示在左上角與排行榜。</p>
+      </div>
     </section>
   </div>
 `;
@@ -770,7 +819,7 @@ const renderBoxReveal = () => {
           <span class="box-light"></span>
         </div>
         <div class="reveal-item">
-          <div class="item-icon">${slotIcon(reward.type, reward.name)}</div>
+          <div class="item-icon">${slotIcon(reward.type, reward.name, reward.imageUrl)}</div>
           <span class="reveal-rarity">${escapeHtml(rarityLabels[rarity] || rarity)}</span>
           <strong>${escapeHtml(reward.name || '神秘裝備')}</strong>
           <span>${escapeHtml(reward.type || '裝備')} · 戰力 +${formatNumber(reward.power)}</span>
@@ -803,6 +852,42 @@ const renderPetQuiz = () => {
             .map(
               (option) => `
                 <button class="mini-button quiz-option" type="button" data-action="answer-pet-question" data-answer="${escapeAttr(option.key)}">
+                  <span>${escapeHtml(option.key)}</span>
+                  ${escapeHtml(option.text)}
+                </button>
+              `
+            )
+            .join('')}
+        </div>
+      </section>
+    </div>
+  `;
+};
+
+const renderUpgradeQuiz = () => {
+  const quiz = state.upgradeQuiz?.question;
+  const item = state.upgradeQuiz?.item;
+
+  if (!quiz) {
+    return '';
+  }
+
+  return `
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="裝備升級問題">
+      <section class="quiz-modal card">
+        <div class="card-header">
+          <div>
+            <h3>裝備升級考驗</h3>
+            <p>${item ? `${itemNameWithUpgrade(item, { alwaysShow: true })} · ` : ''}答錯會消耗本次升級機會與 ${formatNumber(upgradeCost)} 金幣。</p>
+          </div>
+          <button class="icon-button" type="button" data-action="cancel-upgrade-question" aria-label="關閉">關閉</button>
+        </div>
+        <strong class="quiz-question">${escapeHtml(quiz.question)}</strong>
+        <div class="quiz-options">
+          ${(quiz.options || [])
+            .map(
+              (option) => `
+                <button class="mini-button quiz-option" type="button" data-action="answer-upgrade-question" data-answer="${escapeAttr(option.key)}">
                   <span>${escapeHtml(option.key)}</span>
                   ${escapeHtml(option.text)}
                 </button>
@@ -920,7 +1005,7 @@ const renderItemCard = (item) => {
 
   return `
     <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type, item.name)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name, item.imageUrl)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -1042,7 +1127,7 @@ const renderInventoryItem = (item, equippedIds) => {
 
   return `
     <article class="item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type, item.name)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name, item.imageUrl)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item)}</h3>
         <div class="item-meta">
@@ -1212,15 +1297,164 @@ const emergencyTaskPayloadFromForm = (formData) => ({
   reward: formData.get('emergencyTaskReward')
 });
 
+const weeklyStatusLabel = (status) =>
+  ({
+    pending: '等待導師審核',
+    approved: '已完成並發獎',
+    rejected: '未通過'
+  })[status] || '未回報';
+
+const renderStudentWeeklyMissions = () => `
+  <section class="view-title">
+    <h2>每週任務</h2>
+    <p>完成後回報給導師審核；每個任務每週只能完成一次。</p>
+  </section>
+
+  <section class="stats-grid">
+    <div class="stat-card"><span>本週</span><strong>${escapeHtml(state.weeklyMissionWeek || '未載入')}</strong></div>
+    <div class="stat-card"><span>任務數</span><strong>${formatNumber(state.weeklyMissions.length)}</strong></div>
+    <div class="stat-card"><span>已回報</span><strong>${formatNumber(state.weeklyMissions.filter((mission) => mission.myReport).length)}</strong></div>
+  </section>
+
+  <section class="items-grid weekly-mission-list">
+    ${
+      state.weeklyMissions.length
+        ? state.weeklyMissions.map(renderStudentWeeklyMissionCard).join('')
+        : '<div class="empty-card">導師尚未發布每週任務。</div>'
+    }
+  </section>
+`;
+
+const renderStudentWeeklyMissionCard = (mission) => {
+  const report = mission.myReport;
+
+  return `
+    <article class="card weekly-mission-card">
+      <div class="card-header">
+        <div>
+          <h3>${escapeHtml(mission.title)}</h3>
+          <p>${escapeHtml(mission.content)}</p>
+        </div>
+        <span class="price-pill">${formatNumber(mission.reward)} Token</span>
+      </div>
+      ${
+        report
+          ? `
+            <div class="notice-row contribution-row">
+              <strong>${weeklyStatusLabel(report.status)}</strong>
+              <span>${report.reportedAt ? new Date(report.reportedAt).toLocaleString('zh-Hant-HK') : ''}${report.claimedAt ? ` · 已領取 ${formatNumber(report.reward)} Token` : ''}</span>
+            </div>
+          `
+          : `
+            <form class="weekly-report-form" data-weekly-report-form="${escapeAttr(mission._id)}">
+              <div class="field">
+                <label for="weekly-note-${escapeAttr(mission._id)}">完成回報（可選）</label>
+                <textarea id="weekly-note-${escapeAttr(mission._id)}" name="note" rows="3" maxlength="500" placeholder="例如：已完成本週背誦 / 服事 / 靈修任務"></textarea>
+              </div>
+              <button class="primary-button" type="submit">回報完成</button>
+            </form>
+          `
+      }
+    </article>
+  `;
+};
+
+const renderTeacherWeeklyMissionManager = () => `
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h3>每週任務</h3>
+        <p>任務會每週重複；同一團員每週只可回報一次，導師審核通過後會自動發獎。</p>
+      </div>
+      <span class="price-pill">${escapeHtml(state.weeklyMissionWeek || '本週')}</span>
+    </div>
+    <form id="weekly-mission-create-form" class="admin-controls weekly-mission-editor">
+      <div class="field">
+        <label for="weeklyMissionTitle">任務標題</label>
+        <input id="weeklyMissionTitle" name="title" maxlength="80" placeholder="例如：本週背誦金句" required />
+      </div>
+      <div class="field">
+        <label for="weeklyMissionContent">任務內容</label>
+        <textarea id="weeklyMissionContent" name="content" rows="3" maxlength="800" placeholder="輸入學生需要完成的內容" required></textarea>
+      </div>
+      <div class="field">
+        <label for="weeklyMissionReward">獎勵 Token（金幣）</label>
+        <input id="weeklyMissionReward" name="reward" type="number" min="0" step="10" value="100" />
+      </div>
+      <label class="check-row">
+        <input name="active" type="checkbox" checked />
+        <span>啟用任務</span>
+      </label>
+      <button class="primary-button" type="submit">新增每週任務</button>
+    </form>
+    <div class="weekly-mission-list">
+      ${
+        state.weeklyMissions.length
+          ? state.weeklyMissions.map(renderTeacherWeeklyMissionCard).join('')
+          : '<div class="empty-card">尚未建立每週任務。</div>'
+      }
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h3>本週回報</h3>
+        <p>通過後會自動把任務獎勵發到團員帳戶。</p>
+      </div>
+    </div>
+    <div class="notice-list">
+      ${
+        state.weeklyReports.length
+          ? state.weeklyReports.map(renderWeeklyReportRow).join('')
+          : '<div class="empty-card">本週尚未有團員回報。</div>'
+      }
+    </div>
+  </section>
+`;
+
+const renderTeacherWeeklyMissionCard = (mission) => `
+  <form class="managed-item weekly-mission-edit" data-weekly-edit-form="${escapeAttr(mission._id)}">
+    <div class="field">
+      <label for="weekly-title-${escapeAttr(mission._id)}">標題</label>
+      <input id="weekly-title-${escapeAttr(mission._id)}" name="title" maxlength="80" value="${escapeAttr(mission.title)}" />
+    </div>
+    <div class="field">
+      <label for="weekly-content-${escapeAttr(mission._id)}">內容</label>
+      <textarea id="weekly-content-${escapeAttr(mission._id)}" name="content" rows="3" maxlength="800">${escapeHtml(mission.content)}</textarea>
+    </div>
+    <div class="field">
+      <label for="weekly-reward-${escapeAttr(mission._id)}">獎勵</label>
+      <input id="weekly-reward-${escapeAttr(mission._id)}" name="reward" type="number" min="0" step="10" value="${Number(mission.reward || 0)}" />
+    </div>
+    <label class="check-row">
+      <input name="active" type="checkbox" ${mission.active ? 'checked' : ''} />
+      <span>${mission.active ? '啟用中' : '已停用'}</span>
+    </label>
+    <button class="mini-button" type="submit">儲存任務</button>
+  </form>
+`;
+
+const renderWeeklyReportRow = (report) => `
+  <div class="notice-row ${report.status === 'approved' ? 'contribution-row' : report.status === 'rejected' ? 'danger-row' : ''}">
+    <strong>${escapeHtml(report.playerName)} · ${escapeHtml(report.missionTitle || '每週任務')}</strong>
+    <span>${weeklyStatusLabel(report.status)} · 獎勵 ${formatNumber(report.reward)} Token${report.note ? ` · ${escapeHtml(report.note)}` : ''}</span>
+    ${
+      report.status === 'pending'
+        ? `
+          <div class="item-actions">
+            <button class="mini-button" type="button" data-action="approve-weekly-report" data-report-id="${escapeAttr(report._id)}">通過並發獎</button>
+            <button class="mini-button danger-mini" type="button" data-action="reject-weekly-report" data-report-id="${escapeAttr(report._id)}">未通過</button>
+          </div>
+        `
+        : ''
+    }
+  </div>
+`;
+
 const renderHunt = () => {
   if (state.player.role !== 'teacher') {
-    return `
-      <section class="view-title">
-        <h2>任務管理</h2>
-        <p>此頁面由導師用來選擇團員並發放金幣。</p>
-      </section>
-      <div class="empty-card">團員請前往商店購買裝備，或查看排行榜。</div>
-    `;
+    return renderStudentWeeklyMissions();
   }
 
   return `
@@ -1265,6 +1499,8 @@ const renderHunt = () => {
         <button class="primary-button" type="submit" ${state.players.length ? '' : 'disabled'}>新增金幣</button>
       </form>
     </section>
+
+    ${renderTeacherWeeklyMissionManager()}
 
     <section class="card">
       <div class="card-header">
@@ -1516,6 +1752,7 @@ const renderHuntBosses = () => {
 const renderBossCard = (boss) => {
   const hp = getLiveBossHp(boss);
   const timeLeft = getBossTimeLeft(boss);
+  const estimate = getBossCompletionEstimate(boss);
   const defeated = hp <= 0 || Boolean(boss.defeatedAt);
   const bossStatus = defeated
     ? '已完成，正在更換目標'
@@ -1536,7 +1773,7 @@ const renderBossCard = (boss) => {
       </div>
       <div class="boss-portrait">
         <div class="boss-portrait-fallback" aria-hidden="true">${crestIcon()}</div>
-        ${assetImage(bossImageFor(boss), boss.name)}
+        ${assetImage(boss.imageUrl || bossImageFor(boss), boss.name, boss.imageUrl ? bossImageFor(boss) : '')}
       </div>
       <div class="boss-health" aria-label="挑戰進度">
         <div class="boss-health-fill" data-boss-hp-bar="${escapeAttr(boss._id)}" style="width: ${bossHpPercent(boss)}%"></div>
@@ -1544,6 +1781,24 @@ const renderBossCard = (boss) => {
       <div class="boss-health-row">
         <strong>${defeated ? '討伐成功' : '討伐進度'}</strong>
         <span>${defeated ? '準備下一個 Boss' : '團員戰力會持續推進進度'}</span>
+      </div>
+      <div class="boss-detail-grid">
+        <div class="boss-health-row">
+          <strong>Boss 血量</strong>
+          <span><span data-boss-hp="${escapeAttr(boss._id)}">${formatNumber(hp)}</span> / ${formatNumber(boss.maxHp)}</span>
+        </div>
+        <div class="boss-health-row">
+          <strong>預計完成</strong>
+          <span data-boss-estimate="${escapeAttr(boss._id)}">預計完成 ${estimate.label}</span>
+        </div>
+        <div class="boss-health-row">
+          <strong>期限</strong>
+          <span><span data-boss-deadline="${escapeAttr(boss._id)}">剩餘 ${formatDuration(timeLeft)}</span> · ${boss.deadlineAt ? new Date(boss.deadlineAt).toLocaleString('zh-Hant-HK') : '未設定'}</span>
+        </div>
+        <div class="boss-health-row">
+          <strong>判斷</strong>
+          <span data-boss-estimate-status="${escapeAttr(boss._id)}" class="${estimate.willMissDeadline ? 'danger-text' : ''}">${estimate.detail}</span>
+        </div>
       </div>
       <div class="boss-actions">
         ${
@@ -1575,11 +1830,6 @@ const renderBossCard = (boss) => {
 const getUpgradeableItems = () => sortInventoryItems(state.player.items || []);
 
 const getUpgradeSuccessRate = (item) => Math.max(10, 100 - (Number(item.upgradeLevel || 0) + 1) * 10);
-const getNextRarity = (rarity) => {
-  const index = raritySteps.indexOf(rarity);
-  return index >= 0 && index < raritySteps.length - 1 ? raritySteps[index + 1] : null;
-};
-const getRarityUpgradeSuccessRate = (item) => Math.max(5, Math.floor(getUpgradeSuccessRate(item) / 2));
 
 const renderUpgrade = () => {
   if (state.player.role !== 'student') {
@@ -1597,7 +1847,7 @@ const renderUpgrade = () => {
   return `
     <section class="view-title">
       <h2>裝備升級</h2>
-      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；S / SS 裝備可突破稀有度，成功率會減半。</p>
+      <p>每次升級前需要答對一題聖經問題。答錯會消耗本次升級機會與 ${formatNumber(upgradeCost)} 金幣；答對後才會進入升級判定。</p>
     </section>
 
     <section class="stats-grid">
@@ -1620,12 +1870,10 @@ const renderUpgradeCard = (item) => {
   const level = Number(item.upgradeLevel || 0);
   const maxed = level >= maxUpgradeLevel;
   const canAfford = Number(state.player.gold || 0) >= upgradeCost;
-  const nextRarity = getNextRarity(item.rarity);
-  const canBreakRarity = Boolean(nextRarity) && Number(state.player.gold || 0) >= upgradeCost;
 
   return `
     <article class="item-card upgrade-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
-      <div class="item-icon">${slotIcon(item.type, item.name)}</div>
+      <div class="item-icon">${slotIcon(item.type, item.name, item.imageUrl)}</div>
       <div class="item-body">
         <h3>${itemNameWithUpgrade(item, { alwaysShow: true })}</h3>
         <div class="item-meta">
@@ -1635,8 +1883,7 @@ const renderUpgradeCard = (item) => {
           <span>費用 ${formatNumber(upgradeCost)}</span>
         </div>
         <div class="item-actions">
-          <button class="mini-button" type="button" data-action="upgrade-item" data-upgrade-mode="level" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '裝備 +1' : '金幣不足'}</button>
-          <button class="mini-button" type="button" data-action="upgrade-item" data-upgrade-mode="rarity" data-inventory-id="${escapeAttr(item.inventoryId)}" ${nextRarity && canBreakRarity ? '' : 'disabled'}>${nextRarity ? `突破 ${nextRarity}（${formatNumber(getRarityUpgradeSuccessRate(item))}%）` : '已達最高稀有度'}</button>
+          <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '回答問題並升級' : '金幣不足'}</button>
         </div>
       </div>
     </article>
@@ -1884,6 +2131,7 @@ const renderRank = () => {
                 (player, index) => `
                   <article class="podium-card card">
                     <div class="rank-number">${index + 1}</div>
+                    <div class="rank-avatar">${playerAvatarIcon(player)}</div>
                     <div class="rank-name">${escapeHtml(player.name)}</div>
                     <div class="rank-score">${formatNumber(player.totalPower)}</div>
                   </article>
@@ -1903,6 +2151,7 @@ const renderRank = () => {
                 (player, index) => `
                   <article class="rank-row">
                     <strong>${index + 1}</strong>
+                    <div class="rank-avatar">${playerAvatarIcon(player)}</div>
                     <div>
                       <strong>${escapeHtml(player.name)}</strong>
                       <span>金幣 ${formatNumber(player.gold)} · 裝備 ${player.itemCount || 0}</span>
@@ -1951,6 +2200,13 @@ const loadWorldBoss = async () => {
   state.noticeBoard = data.noticeBoard || null;
 };
 
+const loadWeeklyMissions = async () => {
+  const data = await api('/api/weeklyMissions');
+  state.weeklyMissions = data.missions || [];
+  state.weeklyReports = data.reports || [];
+  state.weeklyMissionWeek = data.weekKey || '';
+};
+
 const loadTradeData = async () => {
   if (state.player?.role !== 'student') {
     state.tradePlayers = [];
@@ -1988,6 +2244,10 @@ const refreshViewData = async () => {
 
   if (state.view === 'hunt' || state.view === 'players') {
     await loadPlayers();
+  }
+
+  if (state.view === 'hunt') {
+    await loadWeeklyMissions();
   }
 
   if (state.view === 'players') {
@@ -2041,6 +2301,24 @@ const runAction = async (action, successMessage) => {
 
 app.addEventListener('change', (event) => {
   const sortSelect = event.target.closest('[data-inventory-sort]');
+  const profilePhotoInput = event.target.closest('[data-profile-photo-input]');
+
+  if (profilePhotoInput) {
+    const file = profilePhotoInput.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    runAction(async () => {
+      const imageUrl = await resizeImageFile(file);
+      return api('/api/profilePhoto', {
+        method: 'POST',
+        body: JSON.stringify({ imageUrl })
+      });
+    });
+    return;
+  }
 
   if (!sortSelect) {
     return;
@@ -2133,6 +2411,16 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'remove-profile-photo') {
+    await runAction(() =>
+      api('/api/profilePhoto', {
+        method: 'POST',
+        body: JSON.stringify({ imageUrl: '' })
+      })
+    );
+    return;
+  }
+
   if (action === 'buy-item') {
     const itemId = actionButton.dataset.itemId;
     await runAction(() =>
@@ -2202,13 +2490,44 @@ app.addEventListener('click', async (event) => {
 
   if (action === 'upgrade-item') {
     const inventoryId = actionButton.dataset.inventoryId;
-    const mode = actionButton.dataset.upgradeMode || 'level';
-    await runAction(() =>
+    const item = (state.player.items || []).find((candidate) => candidate.inventoryId === inventoryId);
+
+    try {
+      const data = await api('/api/upgradeQuestion');
+      state.upgradeQuiz = {
+        inventoryId,
+        item,
+        question: data.question
+      };
+      renderShell();
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
+    return;
+  }
+
+  if (action === 'cancel-upgrade-question') {
+    state.upgradeQuiz = null;
+    renderShell();
+    return;
+  }
+
+  if (action === 'answer-upgrade-question') {
+    const quiz = state.upgradeQuiz;
+    const result = await runAction(() =>
       api('/api/upgradeItem', {
         method: 'POST',
-        body: JSON.stringify({ inventoryId, mode })
+        body: JSON.stringify({
+          inventoryId: quiz?.inventoryId,
+          questionId: quiz?.question?.id,
+          answer: actionButton.dataset.answer
+        })
       })
     );
+    if (result) {
+      state.upgradeQuiz = null;
+      renderShell();
+    }
     return;
   }
 
@@ -2264,6 +2583,19 @@ app.addEventListener('click', async (event) => {
   if (action === 'unlock-pet-slot') {
     await runAction(() =>
       api('/api/unlockPetSlot', {
+        method: 'POST',
+        body: JSON.stringify({})
+      })
+    );
+    return;
+  }
+
+  if (action === 'approve-weekly-report' || action === 'reject-weekly-report') {
+    const reportId = actionButton.dataset.reportId;
+    const endpoint = action === 'approve-weekly-report' ? 'approve' : 'reject';
+
+    await runAction(() =>
+      api(`/api/weeklyMissionReports/${reportId}/${endpoint}`, {
         method: 'POST',
         body: JSON.stringify({})
       })
@@ -2436,6 +2768,59 @@ app.addEventListener('submit', async (event) => {
         body: JSON.stringify({
           offeredInventoryId: formData.get('offeredInventoryId'),
           toPlayerId: formData.get('toPlayerId')
+        })
+      })
+    );
+    return;
+  }
+
+  if (event.target.id === 'weekly-mission-create-form') {
+    const formData = new FormData(event.target);
+
+    await runAction(() =>
+      api('/api/weeklyMissions', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: formData.get('title'),
+          content: formData.get('content'),
+          reward: formData.get('reward'),
+          active: formData.get('active') === 'on'
+        })
+      })
+    );
+    event.target.reset();
+    return;
+  }
+
+  const weeklyEditForm = event.target.closest('[data-weekly-edit-form]');
+
+  if (weeklyEditForm) {
+    const formData = new FormData(weeklyEditForm);
+
+    await runAction(() =>
+      api(`/api/weeklyMissions/${weeklyEditForm.dataset.weeklyEditForm}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: formData.get('title'),
+          content: formData.get('content'),
+          reward: formData.get('reward'),
+          active: formData.get('active') === 'on'
+        })
+      })
+    );
+    return;
+  }
+
+  const weeklyReportForm = event.target.closest('[data-weekly-report-form]');
+
+  if (weeklyReportForm) {
+    const formData = new FormData(weeklyReportForm);
+
+    await runAction(() =>
+      api(`/api/weeklyMissions/${weeklyReportForm.dataset.weeklyReportForm}/report`, {
+        method: 'POST',
+        body: JSON.stringify({
+          note: formData.get('note')
         })
       })
     );

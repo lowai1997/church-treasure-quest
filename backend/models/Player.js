@@ -23,6 +23,12 @@ const playerItemSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    imageUrl: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 200000
+    },
     upgradeLevel: {
       type: Number,
       default: 0,
@@ -113,6 +119,12 @@ const playerSchema = new mongoose.Schema(
       type: String,
       enum: ['male-1', 'male-2', 'female-1', 'female-2'],
       default: 'male-1'
+    },
+    photoUrl: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 200000
     },
     gold: {
       type: Number,
