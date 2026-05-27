@@ -724,7 +724,7 @@ const renderLoading = () => {
 const renderShell = () => {
   setBodyView(state.view);
   app.innerHTML = `
-    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''}">
+    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' ? 'mission-app-shell' : ''}">
       <header class="topbar">
         <div class="profile-plaque">
           <button
@@ -1297,38 +1297,63 @@ const weeklyStatusLabel = (status) =>
     rejected: '未通過'
   })[status] || '未回報';
 
+const missionPresentationFor = (mission = {}) => {
+  const titleLength = String(mission.title || '').trim().length;
+  const contentLength = String(mission.content || '').trim().length;
+  const weightedLength = titleLength * 1.35 + contentLength;
+  const minHeight = Math.round(Math.min(540, Math.max(178, 146 + weightedLength * 0.44)));
+  const copySize = weightedLength > 520 ? 0.66 : weightedLength > 340 ? 0.7 : weightedLength > 210 ? 0.74 : 0.82;
+  const titleSize = titleLength > 42 ? 0.92 : titleLength > 28 ? 1 : 1.12;
+  const density = weightedLength > 340 ? 'is-long' : weightedLength > 180 ? 'is-medium' : 'is-short';
+
+  return {
+    density,
+    style: `--mission-card-min-height: ${minHeight}px; --mission-title-size: ${titleSize}rem; --mission-copy-size: ${copySize}rem;`
+  };
+};
+
 const renderStudentWeeklyMissions = () => `
-  <section class="view-title">
-    <h2>每週任務</h2>
-    <p>完成後回報給導師審核；每個任務每週只能完成一次。</p>
-  </section>
+  <section class="mission-board-screen">
+    <section class="mission-board-hero" aria-label="每週任務">
+      <span>Grand Hall</span>
+      <h2>每週任務</h2>
+      <p>完成後回報給導師審核；每個任務每週只能完成一次。</p>
+    </section>
 
-  <section class="stats-grid">
-    <div class="stat-card"><span>本週</span><strong>${escapeHtml(state.weeklyMissionWeek || '未載入')}</strong></div>
-    <div class="stat-card"><span>任務數</span><strong>${formatNumber(state.weeklyMissions.length)}</strong></div>
-    <div class="stat-card"><span>已回報</span><strong>${formatNumber(state.weeklyMissions.filter((mission) => mission.myReport).length)}</strong></div>
-  </section>
+    <section class="mission-board-stats" aria-label="任務進度">
+      <div><span>本週</span><strong>${escapeHtml(state.weeklyMissionWeek || '未載入')}</strong></div>
+      <div><span>任務數</span><strong>${formatNumber(state.weeklyMissions.length)}</strong></div>
+      <div><span>已回報</span><strong>${formatNumber(state.weeklyMissions.filter((mission) => mission.myReport).length)}</strong></div>
+    </section>
 
-  <section class="items-grid weekly-mission-list">
-    ${
-      state.weeklyMissions.length
-        ? state.weeklyMissions.map(renderStudentWeeklyMissionCard).join('')
-        : '<div class="empty-card">導師尚未發布每週任務。</div>'
-    }
+    <section class="mission-board-panel" aria-label="任務佈告欄">
+      <div class="mission-board-panel-title">
+        <span>Mission Board</span>
+        <strong>選擇今週的任務</strong>
+      </div>
+      <section class="items-grid weekly-mission-list mission-board-list">
+        ${
+          state.weeklyMissions.length
+            ? state.weeklyMissions.map(renderStudentWeeklyMissionCard).join('')
+            : '<div class="empty-card mission-empty-card">導師尚未發布每週任務。</div>'
+        }
+      </section>
+    </section>
   </section>
 `;
 
 const renderStudentWeeklyMissionCard = (mission) => {
   const report = mission.myReport;
+  const presentation = missionPresentationFor(mission);
 
   return `
-    <article class="card weekly-mission-card">
-      <div class="card-header">
-        <div>
+    <article class="card weekly-mission-card mission-board-card ${presentation.density}" style="${presentation.style}">
+      <div class="card-header mission-card-header">
+        <div class="mission-card-copy">
           <h3>${escapeHtml(mission.title)}</h3>
           <p>${escapeHtml(mission.content)}</p>
         </div>
-        <span class="price-pill">${formatNumber(mission.reward)} Token</span>
+        <span class="price-pill mission-reward-pill">${formatNumber(mission.reward)} Token</span>
       </div>
       ${
         report
