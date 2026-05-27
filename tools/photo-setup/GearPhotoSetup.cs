@@ -114,8 +114,8 @@ namespace ChurchGamePhotoSetup
             runCheckBox.Left = 140;
             runCheckBox.Top = 328;
             runCheckBox.Width = 210;
-            runCheckBox.Checked = true;
-            runCheckBox.Text = "Run npm check first";
+            runCheckBox.Checked = false;
+            runCheckBox.Text = "Run npm check first (optional)";
             Controls.Add(runCheckBox);
 
             photoOnlyBox.Left = 350;
@@ -274,12 +274,26 @@ namespace ChurchGamePhotoSetup
 
                 if (runCheckBox.Checked)
                 {
-                    AppendStep(log, "npm run check");
-                    var check = RunCommand(projectRoot, "cmd.exe", "/c npm run check");
-                    log.AppendLine(check.Output);
-                    if (check.ExitCode != 0)
+                    var npmCommand = FindNpmCommand();
+
+                    if (String.IsNullOrEmpty(npmCommand))
                     {
-                        throw new InvalidOperationException("npm run check failed.\n\n" + ShortLog(log.ToString()));
+                        if (!photoOnlyBox.Checked)
+                        {
+                            throw new InvalidOperationException("npm was not found on this computer. Install Node.js/npm or turn off \"Run npm check first\".");
+                        }
+
+                        log.AppendLine("npm was not found, so npm run check was skipped for this photo-only publish.");
+                    }
+                    else
+                    {
+                        AppendStep(log, "npm run check");
+                        var check = RunCommand(projectRoot, "cmd.exe", "/c " + QuoteForCmd(npmCommand) + " run check");
+                        log.AppendLine(check.Output);
+                        if (check.ExitCode != 0)
+                        {
+                            throw new InvalidOperationException("npm run check failed.\n\n" + ShortLog(log.ToString()));
+                        }
                     }
                 }
 
@@ -425,6 +439,60 @@ namespace ChurchGamePhotoSetup
                 ExitCode = process.ExitCode,
                 Output = output.ToString()
             };
+        }
+
+        private static string FindNpmCommand()
+        {
+            return FindExecutableOnPath("npm.cmd") ??
+                FindExecutableOnPath("npm.exe") ??
+                FindExistingFile(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "npm.cmd"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "nodejs", "npm.cmd"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "npm", "npm.cmd"));
+        }
+
+        private static string FindExecutableOnPath(string fileName)
+        {
+            var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+            foreach (var directory in path.Split(Path.PathSeparator))
+            {
+                if (String.IsNullOrWhiteSpace(directory))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var candidate = Path.Combine(directory.Trim(), fileName);
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return null;
+        }
+
+        private static string FindExistingFile(params string[] paths)
+        {
+            foreach (var path in paths)
+            {
+                if (!String.IsNullOrWhiteSpace(path) && File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            return null;
+        }
+
+        private static string QuoteForCmd(string value)
+        {
+            return "\"" + value.Replace("\"", "\\\"") + "\"";
         }
 
         private static string QuoteArgument(string value)

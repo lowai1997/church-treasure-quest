@@ -15,6 +15,10 @@ if (-not (Test-Path $compiler)) {
 
 & $compiler /nologo /target:winexe /out:$output /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll $source
 
+if ($LASTEXITCODE -ne 0) {
+  throw "Failed to compile $source"
+}
+
 if (-not (Test-Path $output)) {
   throw "Failed to build $output"
 }
