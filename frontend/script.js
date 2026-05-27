@@ -914,7 +914,6 @@ const renderShop = () => {
   return `
     <section class="shop-screen">
       <section class="shop-hero" aria-label="星光商店">
-        <div class="shop-refresh-badge">每日刷新 12:00</div>
         <img class="shopkeeper-art" src="assets/ui/shopkeeper.png" alt="星光商店店員" />
         <div class="shop-dialog">
           <span>歡迎光臨星光商店 ✦</span>
@@ -950,7 +949,6 @@ const renderShop = () => {
             </span>
             <strong>開啟 1 次</strong>
           </button>
-          <p>今日剩餘次數：10/10</p>
         </div>
       </section>
     </section>
