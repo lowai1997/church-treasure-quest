@@ -918,7 +918,7 @@ h1 {
 
 .shopkeeper-art {
   position: absolute;
-  right: clamp(34px, 9vw, 64px);
+  right: clamp(120px, 28vw, 160px);
   top: clamp(102px, 21vw, 122px);
   z-index: 1;
   width: min(46%, 238px);
@@ -2653,7 +2653,7 @@ h1 {
 
   .shopkeeper-art {
     width: 48%;
-    right: 36px;
+    right: 132px;
     top: 104px;
   }
 
@@ -2703,6 +2703,10 @@ h1 {
     right: 18px;
     width: 52%;
     padding: 10px;
+  }
+
+  .shopkeeper-art {
+    right: 118px;
   }
 
   .shop-dialog strong {
