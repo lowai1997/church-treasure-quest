@@ -178,6 +178,16 @@ const bossImageAssets = [
   'assets/monsters/monster-6.png'
 ];
 
+const navImageAssets = {
+  hunt: 'assets/ui/nav/nav-mission.png',
+  shop: 'assets/ui/nav/nav-shop.png',
+  equipment: 'assets/ui/nav/nav-equipment.png',
+  upgrade: 'assets/ui/nav/nav-upgrade.png',
+  pets: 'assets/ui/nav/nav-pets.png',
+  boss: 'assets/ui/nav/nav-boss.png',
+  rank: 'assets/ui/nav/nav-rank.png'
+};
+
 const avatarImageFor = (avatar) => avatarImageAssets[avatar] || avatarImageAssets['male-1'];
 
 const gearImageFor = (type, name = '') => {
@@ -384,6 +394,8 @@ const navSymbol = (view) =>
     boss: '✺',
     rank: '♕'
   })[view] || '✦';
+
+const navIconFor = (view) => navImageAssets[view] || '';
 
 const crestIcon = () => `
   <svg viewBox="0 0 64 64" aria-hidden="true">
@@ -741,7 +753,7 @@ const renderShell = () => {
         ${renderCurrentView()}
       </main>
 
-      <nav class="bottom-nav" aria-label="主要導覽">
+      <nav class="bottom-nav ${state.player.role === 'student' ? 'ornate-nav' : ''}" aria-label="主要導覽">
         ${navButton('hunt', '任務')}
         ${navButton('shop', '商店')}
         ${state.player.role === 'student' ? navButton('equipment', '裝備') : ''}
@@ -759,12 +771,18 @@ const renderShell = () => {
   syncBossTimers();
 };
 
-const navButton = (view, label) => `
-  <button class="nav-button ${state.view === view ? 'active' : ''}" type="button" data-view="${view}" aria-current="${state.view === view ? 'page' : 'false'}">
-    <span class="nav-icon" aria-hidden="true">${navSymbol(view)}</span>
+const navButton = (view, label) => {
+  const iconAsset = navIconFor(view);
+
+  return `
+  <button class="nav-button ${state.view === view ? 'active' : ''}" type="button" data-view="${view}" aria-current="${state.view === view ? 'page' : 'false'}" aria-label="${escapeAttr(label)}">
+    <span class="nav-icon" aria-hidden="true">${
+      iconAsset ? `<img src="${escapeAttr(iconAsset)}" alt="" loading="lazy" />` : navSymbol(view)
+    }</span>
     <span class="nav-label">${label}</span>
   </button>
 `;
+};
 
 const renderAvatarPicker = (selectedAvatar, { mode = 'auth' } = {}) => `
   <div class="avatar-picker" aria-label="選擇角色頭像">
