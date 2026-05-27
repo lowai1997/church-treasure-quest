@@ -705,7 +705,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 14px 0 10px;
   color: var(--ink-strong);
   background:
     linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(255, 244, 224, 0.9));
@@ -716,16 +716,23 @@ h1 {
   white-space: nowrap;
 }
 
-.wallet-icon {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  color: #85682a;
-  background: radial-gradient(circle at 35% 28%, #ffffff, #ffe6a8 58%, #d8b86f);
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(216, 184, 111, 0.42);
-  font-size: 0.78rem;
+.token-amount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.token-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(126, 92, 35, 0.18));
 }
 
 .icon-button {
@@ -848,13 +855,6 @@ h1 {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.62),
     0 12px 26px rgba(109, 93, 139, 0.18);
-}
-
-.shop-app-shell .wallet-icon {
-  color: transparent;
-  background: url("./assets/ui/star-currency.png") center / 230% auto no-repeat;
-  border: 0;
-  box-shadow: none;
 }
 
 .shop-app-shell .icon-button {
@@ -1289,8 +1289,8 @@ h1 {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.1) 0 24%, rgba(91, 69, 111, 0.08) 48%, rgba(255, 253, 248, 0.64) 100%),
-    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.32), transparent 16rem);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.18) 0 24%, rgba(91, 69, 111, 0.12) 48%, rgba(255, 253, 248, 0.7) 100%),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.44), transparent 16rem);
   content: "";
 }
 
@@ -1339,12 +1339,17 @@ h1 {
   padding: 14px 18px 12px;
   color: var(--ink-strong);
   text-align: center;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.82);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.9);
 }
 
 .mission-board-hero span,
 .mission-board-panel-title span {
-  color: #9a74ba;
+  width: fit-content;
+  padding: 3px 10px;
+  color: #704c91;
+  background: rgba(255, 253, 248, 0.78);
+  border: 1px solid rgba(185, 173, 242, 0.28);
+  border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.18em;
@@ -1361,8 +1366,11 @@ h1 {
 
 .mission-board-hero p {
   max-width: 370px;
+  padding: 7px 12px;
   margin: 0;
-  color: #66516f;
+  color: #4c3c58;
+  background: rgba(255, 253, 248, 0.72);
+  border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 900;
   line-height: 1.5;
@@ -1419,8 +1427,8 @@ h1 {
   inset: 24px -6px 0;
   z-index: -1;
   background:
-    linear-gradient(180deg, rgba(88, 64, 106, 0.24), rgba(255, 253, 248, 0.34)),
-    radial-gradient(circle at 50% 0, rgba(216, 184, 111, 0.28), transparent 16rem);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.48), rgba(245, 241, 255, 0.54)),
+    radial-gradient(circle at 50% 0, rgba(216, 184, 111, 0.24), transparent 16rem);
   border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 30px 30px 18px 18px;
   box-shadow: 0 22px 44px rgba(82, 64, 102, 0.16);
@@ -1433,7 +1441,7 @@ h1 {
   gap: 2px;
   color: var(--ink-strong);
   text-align: center;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.9);
 }
 
 .mission-board-panel-title strong {
@@ -1449,13 +1457,17 @@ h1 {
 .mission-board-card {
   min-height: var(--mission-card-min-height, 178px);
   align-content: center;
-  padding: clamp(34px, 7.2vw, 42px) clamp(31px, 8.8vw, 46px) clamp(28px, 6.4vw, 38px);
-  overflow: visible;
-  background: url("./assets/ui/mission/mission-card-frame.png") center / 100% 100% no-repeat;
-  border: 0;
-  border-radius: 26px;
-  box-shadow: 0 14px 26px rgba(82, 64, 102, 0.13);
-  backdrop-filter: none;
+  padding: clamp(17px, 4.4vw, 22px);
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(255, 248, 235, 0.92)),
+    radial-gradient(circle at 18% 0, rgba(245, 223, 170, 0.28), transparent 10rem);
+  border: 1px solid rgba(216, 184, 111, 0.46);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.68),
+    0 14px 26px rgba(82, 64, 102, 0.15);
+  backdrop-filter: blur(6px);
 }
 
 .mission-board-card::before {
@@ -1478,9 +1490,9 @@ h1 {
 
 .mission-card-copy h3 {
   margin: 0;
-  color: #594664;
+  color: #3f304c;
   font-size: var(--mission-title-size, 1.12rem);
-  line-height: 1.18;
+  line-height: 1.22;
   font-weight: 900;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -1489,16 +1501,20 @@ h1 {
 .mission-card-copy p {
   max-width: 100%;
   margin: 0;
-  color: #7a6a87;
+  color: #4f425a;
   font-size: var(--mission-copy-size, 0.82rem);
-  font-weight: 800;
-  line-height: 1.48;
+  font-weight: 900;
+  line-height: 1.58;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
+.mission-board-card.is-long {
+  align-content: start;
+}
+
 .mission-reward-pill {
-  max-width: 94px;
+  max-width: 118px;
   white-space: normal;
   text-align: center;
 }
@@ -1591,6 +1607,8 @@ h1 {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 5px;
   min-height: 35px;
   padding: 6px 11px;
   color: var(--ink-strong);
@@ -1602,6 +1620,32 @@ h1 {
   font-size: 0.84rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.price-pill .token-icon,
+.shop-price .token-icon,
+.stat-card .token-icon,
+.item-meta .token-icon,
+.mini-button .token-icon,
+.ghost-button .token-icon,
+.amount-button .token-icon,
+.notice-row .token-icon,
+.wallet .token-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.stat-card .token-amount,
+.rank-row .token-amount,
+.admin-player .token-amount,
+.notice-row .token-amount,
+.pet-card .token-amount,
+.view-title .token-amount,
+.quiz-modal .token-amount,
+.ghost-button .token-amount,
+.amount-button .token-amount,
+.mini-button .token-amount {
+  vertical-align: middle;
 }
 
 .items-grid {
@@ -1701,6 +1745,15 @@ h1 {
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid rgba(184, 156, 104, 0.16);
   border-radius: 999px;
+}
+
+.item-meta .token-amount,
+.item-meta .token-amount span {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .mini-button {
@@ -2728,7 +2781,7 @@ h1 {
   position: fixed;
   right: 50%;
   bottom: 0;
-  z-index: 10;
+  z-index: 40;
   width: min(100%, 520px);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));

@@ -145,6 +145,15 @@ const assetImage = (src, alt = '', fallbackSrc = '') =>
       } onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; } else { this.remove(); }" />`
     : '';
 
+const tokenIcon = () => '<img class="token-icon" src="assets/ui/star-currency.png" alt="" loading="lazy" />';
+
+const tokenAmount = (value) => `
+  <span class="token-amount" aria-label="${formatNumber(value)} 金幣">
+    ${tokenIcon()}
+    <span>${formatNumber(value)}</span>
+  </span>
+`;
+
 const avatarImageAssets = {
   'male-1': 'assets/icons/avatar-male-1.png',
   'male-2': 'assets/icons/avatar-male-2.png',
@@ -724,7 +733,7 @@ const renderLoading = () => {
 const renderShell = () => {
   setBodyView(state.view);
   app.innerHTML = `
-    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' ? 'mission-app-shell' : ''}">
+    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''}">
       <header class="topbar">
         <div class="profile-plaque">
           <button
@@ -744,7 +753,7 @@ const renderShell = () => {
           </div>
         </div>
         <div class="top-actions">
-          <div class="wallet" aria-label="目前金幣"><span class="wallet-icon" aria-hidden="true">✦</span>${formatNumber(state.player.gold)}</div>
+          <div class="wallet" aria-label="目前金幣">${tokenAmount(state.player.gold)}</div>
           <button class="icon-button" type="button" data-action="logout" aria-label="登出">退出</button>
         </div>
       </header>
@@ -864,7 +873,7 @@ const renderPetQuiz = () => {
         <div class="card-header">
           <div>
             <h3>寵物升級考驗</h3>
-            <p>答錯也會消耗 ${formatNumber(feedPetCost)} 金幣與本次升級機會。</p>
+            <p>答錯也會消耗 ${tokenAmount(feedPetCost)} 與本次升級機會。</p>
           </div>
           <button class="icon-button" type="button" data-action="cancel-pet-question" aria-label="關閉">關閉</button>
         </div>
@@ -961,10 +970,7 @@ const renderShop = () => {
             <small>每次隨機獲得一件裝備或珍稀道具</small>
           </div>
           <button class="shop-chest-button" type="button" data-action="open-box">
-            <span class="shop-price">
-              <img src="assets/ui/star-currency.png" alt="星石" />
-              ${formatNumber(mysteryBoxPrice)}
-            </span>
+            <span class="shop-price">${tokenAmount(mysteryBoxPrice)}</span>
             <strong>開啟 1 次</strong>
           </button>
         </div>
@@ -983,10 +989,7 @@ const renderShopItemCard = (item) => {
       <h3>${itemNameWithUpgrade(item)}</h3>
       <p>${escapeHtml(item.rarity || 'N')} · ${escapeHtml(item.type)} · 戰力 +${formatNumber(item.power)}</p>
       <button class="shop-buy-button" type="button" data-action="buy-item" data-item-id="${escapeAttr(item._id)}" ${canBuy ? '' : 'disabled'}>
-        <span class="shop-price">
-          <img src="assets/ui/star-currency.png" alt="星石" />
-          ${formatNumber(item.price)}
-        </span>
+        <span class="shop-price">${tokenAmount(item.price)}</span>
         <span>${canBuy ? '購買' : '不足'}</span>
       </button>
     </article>
@@ -1005,7 +1008,7 @@ const renderItemCard = (item) => {
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>${escapeHtml(item.type)}</span>
           <span>戰力 +${formatNumber(item.power)}</span>
-          <span>金幣 ${formatNumber(item.price)}</span>
+          <span>價格 ${tokenAmount(item.price)}</span>
         </div>
         <button class="mini-button" type="button" data-action="buy-item" data-item-id="${escapeAttr(item._id)}" ${canBuy ? '' : 'disabled'}>${canBuy ? '購買' : '金幣不足'}</button>
       </div>
@@ -1049,7 +1052,7 @@ const renderEquipment = () => {
 
     <section class="stats-grid" aria-label="裝備狀態">
       <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.equipmentPower)}</strong></div>
-      <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
+      <div class="stat-card"><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
       <div class="stat-card"><span>寵物戰力</span><strong>${formatNumber(state.player.petPower)}</strong></div>
     </section>
 
@@ -1127,7 +1130,7 @@ const renderInventoryItem = (item, equippedIds) => {
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>${escapeHtml(item.type)}</span>
           <span>戰力 +${formatNumber(item.power)}</span>
-          <span>賣出 ${formatNumber(gearSellValue(item))}</span>
+          <span>賣出 ${tokenAmount(gearSellValue(item))}</span>
         </div>
         <div class="item-actions">
           ${
@@ -1277,7 +1280,7 @@ const renderEmergencyTaskControls = () => `
       </select>
     </div>
     <div class="field">
-      <label for="emergencyTaskReward">完成獎勵 Token（金幣）</label>
+      <label for="emergencyTaskReward">完成獎勵金幣</label>
       <input id="emergencyTaskReward" name="emergencyTaskReward" type="number" min="0" step="10" value="${Number(state.bossConfig?.emergencyTask?.reward || 500)}" />
     </div>
   </div>
@@ -1301,9 +1304,9 @@ const missionPresentationFor = (mission = {}) => {
   const titleLength = String(mission.title || '').trim().length;
   const contentLength = String(mission.content || '').trim().length;
   const weightedLength = titleLength * 1.35 + contentLength;
-  const minHeight = Math.round(Math.min(540, Math.max(178, 146 + weightedLength * 0.44)));
-  const copySize = weightedLength > 520 ? 0.66 : weightedLength > 340 ? 0.7 : weightedLength > 210 ? 0.74 : 0.82;
-  const titleSize = titleLength > 42 ? 0.92 : titleLength > 28 ? 1 : 1.12;
+  const minHeight = Math.round(Math.min(560, Math.max(180, 142 + weightedLength * 0.5)));
+  const copySize = weightedLength > 520 ? 0.76 : weightedLength > 340 ? 0.8 : weightedLength > 210 ? 0.86 : 0.95;
+  const titleSize = titleLength > 42 ? 1 : titleLength > 28 ? 1.08 : 1.22;
   const density = weightedLength > 340 ? 'is-long' : weightedLength > 180 ? 'is-medium' : 'is-short';
 
   return {
@@ -1353,14 +1356,14 @@ const renderStudentWeeklyMissionCard = (mission) => {
           <h3>${escapeHtml(mission.title)}</h3>
           <p>${escapeHtml(mission.content)}</p>
         </div>
-        <span class="price-pill mission-reward-pill">${formatNumber(mission.reward)} Token</span>
+        <span class="price-pill mission-reward-pill">${tokenAmount(mission.reward)}</span>
       </div>
       ${
         report
           ? `
             <div class="notice-row contribution-row">
               <strong>${weeklyStatusLabel(report.status)}</strong>
-              <span>${report.reportedAt ? new Date(report.reportedAt).toLocaleString('zh-Hant-HK') : ''}${report.claimedAt ? ` · 已領取 ${formatNumber(report.reward)} Token` : ''}</span>
+              <span>${report.reportedAt ? new Date(report.reportedAt).toLocaleString('zh-Hant-HK') : ''}${report.claimedAt ? ` · 已領取 ${tokenAmount(report.reward)}` : ''}</span>
             </div>
           `
           : `
@@ -1372,6 +1375,8 @@ const renderStudentWeeklyMissionCard = (mission) => {
     </article>
   `;
 };
+
+const pendingWeeklyReports = () => state.weeklyReports.filter((report) => report.status === 'pending');
 
 const renderTeacherWeeklyMissionManager = () => `
   <section class="card">
@@ -1392,7 +1397,7 @@ const renderTeacherWeeklyMissionManager = () => `
         <textarea id="weeklyMissionContent" name="content" rows="3" maxlength="800" placeholder="輸入學生需要完成的內容" required></textarea>
       </div>
       <div class="field">
-        <label for="weeklyMissionReward">獎勵 Token（金幣）</label>
+        <label for="weeklyMissionReward">獎勵金幣</label>
         <input id="weeklyMissionReward" name="reward" type="number" min="0" step="10" value="100" />
       </div>
       <label class="check-row">
@@ -1419,9 +1424,9 @@ const renderTeacherWeeklyMissionManager = () => `
     </div>
     <div class="notice-list">
       ${
-        state.weeklyReports.length
-          ? state.weeklyReports.map(renderWeeklyReportRow).join('')
-          : '<div class="empty-card">本週尚未有團員回報。</div>'
+        pendingWeeklyReports().length
+          ? pendingWeeklyReports().map(renderWeeklyReportRow).join('')
+          : '<div class="empty-card">本週暫時沒有待審核回報。</div>'
       }
     </div>
   </section>
@@ -1455,7 +1460,7 @@ const renderTeacherWeeklyMissionCard = (mission) => `
 const renderWeeklyReportRow = (report) => `
   <div class="notice-row ${report.status === 'approved' ? 'contribution-row' : report.status === 'rejected' ? 'danger-row' : ''}">
     <strong>${escapeHtml(report.playerName)} · ${escapeHtml(report.missionTitle || '每週任務')}</strong>
-    <span>${weeklyStatusLabel(report.status)} · 獎勵 ${formatNumber(report.reward)} Token</span>
+    <span>${weeklyStatusLabel(report.status)} · 獎勵 ${tokenAmount(report.reward)}</span>
     ${
       report.status === 'pending'
         ? `
@@ -1501,7 +1506,7 @@ const renderHunt = () => {
               .map(
                 (amount) => `
                   <button class="amount-button ${state.addGoldAmount === amount ? 'active' : ''}" type="button" data-coin-amount="${amount}">
-                    ${amount}
+                    ${tokenAmount(amount)}
                   </button>
                 `
               )
@@ -1510,7 +1515,7 @@ const renderHunt = () => {
           <input type="hidden" name="amount" value="${state.addGoldAmount}" />
         </div>
         <div class="field">
-          <label for="customAmount">自訂 Token（金幣）</label>
+          <label for="customAmount">自訂金幣</label>
           <input id="customAmount" name="customAmount" type="number" min="1" step="1" placeholder="輸入自訂發放數量（可留空）" />
         </div>
         <button class="primary-button" type="submit" ${state.players.length ? '' : 'disabled'}>新增金幣</button>
@@ -1678,7 +1683,7 @@ const renderEmergencyTask = () => {
       </div>
       <div class="emergency-task">
         <strong>${escapeHtml(task.title || '緊急守護任務')}</strong>
-        <span>完成獎勵 ${formatNumber(task.reward || 0)} Token（金幣）</span>
+        <span>完成獎勵 ${tokenAmount(task.reward || 0)}</span>
         ${task.issuedAt ? `<small>發布時間 ${new Date(task.issuedAt).toLocaleString('zh-Hant-HK')}</small>` : ''}
       </div>
     </section>
@@ -1864,11 +1869,11 @@ const renderUpgrade = () => {
   return `
     <section class="view-title">
       <h2>裝備升級</h2>
-      <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；成功率會隨等級逐步下降。</p>
+      <p>每次升級消耗 ${tokenAmount(upgradeCost)}。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；成功率會隨等級逐步下降。</p>
     </section>
 
     <section class="stats-grid">
-      <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
+      <div class="stat-card"><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
       <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
       <div class="stat-card"><span>裝備數</span><strong>${formatNumber(upgradeItems.length)}</strong></div>
     </section>
@@ -1897,7 +1902,7 @@ const renderUpgradeCard = (item) => {
           <span>${escapeHtml(item.rarity || 'N')}</span>
           <span>戰力 ${formatNumber(item.power)}</span>
           <span>成功率 ${maxed ? '已滿' : `${formatNumber(getUpgradeSuccessRate(item))}%`}</span>
-          <span>費用 ${formatNumber(upgradeCost)}</span>
+          <span>費用 ${tokenAmount(upgradeCost)}</span>
         </div>
         <div class="item-actions">
           <button class="mini-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>${maxed ? `已 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '裝備 +1' : '金幣不足'}</button>
@@ -1924,13 +1929,13 @@ const renderPets = () => {
   return `
     <section class="view-title">
       <h2>寵物</h2>
-      <p>寵物戰力會加入總戰力。每次升級前需要答對一題聖經問題；答錯會消耗 ${formatNumber(feedPetCost)} 金幣與本次升級機會，答對則提升 ${formatNumber(petPowerGain)} 戰力。</p>
+      <p>寵物戰力會加入總戰力。每次升級前需要答對一題聖經問題；答錯會消耗 ${tokenAmount(feedPetCost)} 與本次升級機會，答對則提升 ${formatNumber(petPowerGain)} 戰力。</p>
     </section>
 
     <section class="stats-grid">
       <div class="stat-card"><span>寵物欄位</span><strong>${formatNumber(pets.length)} / ${formatNumber(availableSlots)}</strong></div>
       <div class="stat-card"><span>寵物戰力</span><strong>${formatNumber(state.player.petPower)}</strong></div>
-      <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
+      <div class="stat-card"><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
     </section>
 
     <section class="card">
@@ -1939,7 +1944,7 @@ const renderPets = () => {
           <h3>我的寵物</h3>
           <p>${pets.length ? '答對問題即可提升等級與戰力。' : '先從下方選擇一隻寵物。'}</p>
         </div>
-        <button class="ghost-button" type="button" data-action="unlock-pet-slot" ${availableSlots >= maxPetSlots || state.player.gold < unlockPetSlotCost ? 'disabled' : ''}>解鎖欄位 ${formatNumber(unlockPetSlotCost)}</button>
+        <button class="ghost-button" type="button" data-action="unlock-pet-slot" ${availableSlots >= maxPetSlots || state.player.gold < unlockPetSlotCost ? 'disabled' : ''}>解鎖欄位 ${tokenAmount(unlockPetSlotCost)}</button>
       </div>
       <div class="pet-grid">
         ${
@@ -1972,7 +1977,7 @@ const renderOwnedPetCard = (pet) => `
   <article class="pet-card">
     <strong>${escapeHtml(pet.name)}</strong>
     <span>${escapeHtml(pet.type)} · Lv.${formatNumber(pet.level)} · 戰力 ${formatNumber(pet.power)}</span>
-    <button class="mini-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${formatNumber(feedPetCost)}</button>
+    <button class="mini-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${tokenAmount(feedPetCost)}</button>
   </article>
 `;
 
@@ -2026,7 +2031,7 @@ const renderAdminRow = (player) => `
         <strong>${escapeHtml(player.name)}</strong>
         <span>裝備 ${player.items?.length || 0} 件 · 戰力 ${formatNumber(totalPower(player))}</span>
       </div>
-      <span>金幣 ${formatNumber(player.gold)}</span>
+      <span>${tokenAmount(player.gold)}</span>
     </div>
     <div class="row-actions">
       <input aria-label="${escapeAttr(player.name)} 新金幣數量" type="number" min="0" step="1" value="${player.gold}" data-gold-input="${escapeAttr(player._id)}" />
@@ -2171,7 +2176,7 @@ const renderRank = () => {
                     <div class="rank-avatar">${playerAvatarIcon(player)}</div>
                     <div>
                       <strong>${escapeHtml(player.name)}</strong>
-                      <span>金幣 ${formatNumber(player.gold)} · 裝備 ${player.itemCount || 0}</span>
+                      <span>${tokenAmount(player.gold)} · 裝備 ${player.itemCount || 0}</span>
                     </div>
                     <div class="rank-total">${formatNumber(player.totalPower)}</div>
                   </article>
