@@ -234,107 +234,11 @@ const customImageForName = (map, name = '') => map[String(name || '').trim()] ||
 const gearImageForItem = (item = {}) => customImageForName(state.gearImageMap, item.name);
 const bossDisplayImageFor = (boss = {}) => customImageForName(state.bossImageMap, boss.name) || bossImageFor(boss);
 
-const itemIcon = () => `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M12 2.8 15.2 9l6.8 1-4.9 4.8 1.2 6.8L12 18.4l-6.1 3.2 1.2-6.8L2.2 10l6.8-1L12 2.8Z" fill="currentColor" opacity=".9"/>
-  </svg>
-`;
-
-const weaponIconFor = (name = '') => {
-  if (/[弓弩矢]/.test(name)) {
-    return `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M31 7c-9 6-12 26 0 34" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3.2"/>
-        <path d="M31 7c6 8 6 26 0 34M31 8 15 40M16 19l10 10M11 41l8-3 3-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8"/>
-        <path d="M34 19l3 2 3-2-1 4 3 3-4 .3-2 3-1.4-3.5-3.6-.8 3-2.4V19Z" fill="currentColor"/>
-      </svg>
-    `;
-  }
-
-  if (/[杖]/.test(name)) {
-    return `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M31 6 13 42" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3.2"/>
-        <path d="M33 5 38 10 33 15 28 10 33 5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.8"/>
-        <path d="M33 10h8M33 10l-5-7M20 27l5 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.4"/>
-        <path d="M10 37c4-1 7 1 9 5-5-1-8-2-9-5Z" fill="currentColor" opacity=".45"/>
-      </svg>
-    `;
-  }
-
-  if (/[矛槍戟]/.test(name)) {
-    return `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M31 5 41 15 34 18 28 12 31 5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.8"/>
-        <path d="M34 14 11 37M15 33l7 7M24 24l5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-        <path d="M11 37 7 43l6-4" fill="currentColor"/>
-      </svg>
-    `;
-  }
-
-  if (/[斧]/.test(name)) {
-    return `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M21 10c7-3 15 0 18 7-5 2-10 3-15 1l-4-4 1-4Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.8"/>
-        <path d="M25 17 10 41M16 31l7 5M29 14l5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-      </svg>
-    `;
-  }
-
-  return `
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-      <path d="M31.5 4.5 43 16 18.6 40.4l-8.1 2.1 2.1-8.1L37 10 31.5 4.5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-      <path d="m27 16 5 5M10 34l4 4M7 29l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-      <path d="M36 6l2 4 4 .5-3 2.8.8 4-3.8-2-3.6 2 .7-4-3-2.8 4.2-.5 1.7-4Z" fill="currentColor"/>
-    </svg>
-  `;
-};
-
 const slotIcon = (type, name = '', imageUrl = '') => {
-  const slotKey = typeToSlot[type] || type;
-  const icons = {
-    weapon: weaponIconFor(name),
-    helmet: `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M9 26c0-10 6.4-17 15-17s15 7 15 17v9c0 3-2 5-5 5H14c-3 0-5-2-5-5v-9Z" fill="none" stroke="currentColor" stroke-width="3"/>
-        <path d="M12 27h24M18 40V27M30 40V27M18 14c4 4 8 4 12 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-        <path d="M24 4l2 4 4 .5-3 2.8.8 4-3.8-2-3.8 2 .8-4-3-2.8 4-.5 2-4Z" fill="currentColor"/>
-      </svg>
-    `,
-    armor: `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M14 8h20l7 8-5 7-3-2v19H15V21l-3 2-5-7 7-8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M20 10c.6 4 2 6 4 7 2-1 3.4-3 4-7M24 18v20M18 29h12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-        <path d="M24 22 29 28 24 36 19 28 24 22Z" fill="currentColor" opacity=".35"/>
-      </svg>
-    `,
-    pants: `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M15 7h18l3 34h-9l-3-19-3 19h-9l3-34Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M16 14h16M24 8v14M17 33c3-2 5-2 8 0M26 33c3-2 5-2 8 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-      </svg>
-    `,
-    shoes: `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M11 27c5 3 11 2 15-5l5 8 8 3v6H8v-5l3-7Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M16 29h9M28 31h6M13 22c3-1 5-3 7-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"/>
-        <path d="M35 19l1.5 3 3.5.4-2.5 2.4.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.5-2.4 3.5-.4 1.5-3Z" fill="currentColor"/>
-      </svg>
-    `,
-    accessory: `
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M24 6 35 17 24 42 13 17 24 6Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M13 17h22M19 17l5 25 5-25M18 11h12" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>
-        <path d="M38 7l1.6 3.2 3.4.5-2.5 2.5.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.5-2.5 3.4-.5L38 7Z" fill="currentColor"/>
-      </svg>
-    `
-  };
-
   const imageAsset = gearImageFor(type, name);
 
   return `
     <span class="asset-icon gear-asset">
-      <span class="asset-fallback" aria-hidden="true">${icons[slotKey] || itemIcon()}</span>
       ${assetImage(imageUrl || imageAsset.src, '', imageUrl ? '' : imageAsset.fallbackSrc)}
     </span>
   `;
