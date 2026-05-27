@@ -807,7 +807,7 @@ h1 {
 .shop-app-shell {
   position: relative;
   overflow: hidden;
-  padding: 0 0 calc(112px + env(safe-area-inset-bottom));
+  padding: 0 0 calc(86px + env(safe-area-inset-bottom));
   background:
     radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.58), transparent 36rem),
     linear-gradient(180deg, #eee6ff 0%, #fff8f1 58%, #f8f2ff 100%);
@@ -866,10 +866,30 @@ h1 {
   gap: 0;
 }
 
+.shop-app-shell .bottom-nav {
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+}
+
+.shop-app-shell .nav-button {
+  min-height: 52px;
+  border-radius: 13px;
+}
+
+.shop-app-shell .nav-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 11px;
+  font-size: 0.94rem;
+}
+
+.shop-app-shell .nav-label {
+  font-size: 0.64rem;
+}
+
 .shop-screen {
   position: relative;
-  min-height: calc(100dvh - 112px);
-  padding: 0 10px 20px;
+  min-height: calc(100dvh - 86px);
+  padding: 0 10px 8px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0) 0 76%, rgba(249, 243, 255, 0.86) 96%),
     url("./assets/ui/shop-bg-game.png") top center / 100% auto no-repeat;
@@ -892,7 +912,7 @@ h1 {
 }
 
 .shop-hero {
-  min-height: clamp(480px, 111vw, 610px);
+  min-height: clamp(312px, 61vw, 358px);
   isolation: isolate;
 }
 
@@ -915,11 +935,11 @@ h1 {
 
 .shopkeeper-art {
   position: absolute;
-  right: max(-48px, -8vw);
-  top: clamp(108px, 28vw, 150px);
+  right: max(-18px, -3vw);
+  top: clamp(106px, 23vw, 128px);
   z-index: 1;
-  width: min(78%, 382px);
-  max-height: 520px;
+  width: min(46%, 238px);
+  max-height: 300px;
   object-fit: contain;
   object-position: center bottom;
   filter:
@@ -929,11 +949,11 @@ h1 {
 
 .shop-dialog {
   position: absolute;
-  right: 12px;
-  top: clamp(302px, 72vw, 388px);
+  right: 8px;
+  top: clamp(226px, 47vw, 270px);
   z-index: 2;
-  width: min(48%, 222px);
-  padding: 14px 15px;
+  width: min(43%, 186px);
+  padding: 10px 12px;
   color: #796b91;
   background:
     linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(255, 248, 237, 0.84));
@@ -965,15 +985,15 @@ h1 {
 }
 
 .shop-dialog span {
-  margin-bottom: 5px;
+  margin-bottom: 3px;
   color: #9a87b4;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 900;
 }
 
 .shop-dialog strong {
-  font-size: 0.98rem;
-  line-height: 1.55;
+  font-size: 0.82rem;
+  line-height: 1.42;
 }
 
 .shop-goods-panel,
@@ -986,8 +1006,8 @@ h1 {
 }
 
 .shop-goods-panel {
-  margin: -70px 0 18px;
-  padding: 15px 10px 17px;
+  margin: -8px 0 8px;
+  padding: 10px 8px 11px;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 253, 248, 0.68), rgba(250, 243, 255, 0.72));
@@ -998,8 +1018,8 @@ h1 {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: 2px;
+  margin-bottom: 8px;
   text-align: center;
 }
 
@@ -1023,7 +1043,7 @@ h1 {
 
 .shop-section-title span {
   color: #62517f;
-  font-size: 1.55rem;
+  font-size: 1.28rem;
   line-height: 1.1;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -1032,29 +1052,26 @@ h1 {
 
 .shop-section-title small {
   color: #9a87b4;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 900;
 }
 
 .shop-items-rail {
   display: grid;
-  grid-auto-columns: minmax(122px, 32%);
-  grid-auto-flow: column;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 4px 2px 8px;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  overflow: hidden;
+  padding: 3px 1px 4px;
 }
 
 .shop-item-card {
   --rarity: #b7a7d9;
   position: relative;
-  min-height: 214px;
+  min-height: 156px;
   display: grid;
   align-content: start;
-  gap: 8px;
-  padding: 16px 9px 10px;
+  gap: 5px;
+  padding: 11px 6px 7px;
   overflow: hidden;
   color: #675778;
   background:
@@ -1065,7 +1082,6 @@ h1 {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.76),
     0 12px 24px rgba(116, 94, 146, 0.1);
-  scroll-snap-align: start;
 }
 
 .shop-item-card[data-rarity="R"] {
@@ -1086,8 +1102,8 @@ h1 {
 
 .shop-item-ornament {
   position: absolute;
-  inset: 6px 6px auto;
-  height: 34px;
+  inset: 5px 5px auto;
+  height: 25px;
   border: 1px solid rgba(185, 173, 242, 0.3);
   border-bottom: 0;
   border-radius: 16px 16px 0 0;
@@ -1097,9 +1113,9 @@ h1 {
 .shop-item-ornament::after {
   position: absolute;
   left: 50%;
-  top: -7px;
-  width: 14px;
-  height: 14px;
+  top: -5px;
+  width: 11px;
+  height: 11px;
   color: var(--rarity);
   transform: translateX(-50%) rotate(45deg);
   background: currentColor;
@@ -1108,18 +1124,18 @@ h1 {
 }
 
 .shop-item-icon {
-  width: 74px;
-  height: 74px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   justify-self: center;
-  margin-top: 14px;
+  margin-top: 9px;
   color: var(--rarity);
   background:
     radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.95), transparent 52%),
     linear-gradient(145deg, rgba(255, 253, 248, 0.96), rgba(245, 241, 255, 0.86));
   border: 1px solid color-mix(in srgb, var(--rarity) 72%, white);
-  border-radius: 18px;
+  border-radius: 14px;
   box-shadow:
     inset 0 0 0 3px rgba(255, 255, 255, 0.46),
     0 10px 20px rgba(116, 94, 146, 0.11);
@@ -1127,16 +1143,16 @@ h1 {
 
 .shop-item-icon .asset-icon,
 .shop-item-icon svg {
-  width: 52px;
-  height: 52px;
+  width: 34px;
+  height: 34px;
 }
 
 .shop-item-card h3 {
-  min-height: 44px;
+  min-height: 32px;
   margin: 0;
   color: #5f5176;
-  font-size: 0.96rem;
-  line-height: 1.35;
+  font-size: 0.75rem;
+  line-height: 1.28;
   font-weight: 900;
   text-align: center;
 }
@@ -1144,7 +1160,7 @@ h1 {
 .shop-item-card p {
   margin: 0;
   color: #9a87b4;
-  font-size: 0.72rem;
+  font-size: 0.58rem;
   font-weight: 900;
   line-height: 1.3;
   text-align: center;
@@ -1163,11 +1179,11 @@ h1 {
 }
 
 .shop-buy-button {
-  min-height: 40px;
+  min-height: 33px;
   display: grid;
   place-items: center;
   gap: 1px;
-  padding: 4px 8px;
+  padding: 3px 5px;
   border-radius: 999px;
 }
 
@@ -1186,8 +1202,8 @@ h1 {
 }
 
 .shop-price img {
-  width: 20px;
-  height: 20px;
+  width: 17px;
+  height: 17px;
   object-fit: contain;
   transform: scale(2.15);
   pointer-events: none;
@@ -1195,22 +1211,22 @@ h1 {
 
 .shop-chest-panel {
   display: grid;
-  grid-template-columns: minmax(140px, 42%) minmax(0, 1fr);
+  grid-template-columns: minmax(88px, 30%) minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  min-height: 236px;
-  padding: 18px 14px;
+  gap: 8px;
+  min-height: 118px;
+  padding: 8px 12px;
   background:
     linear-gradient(135deg, rgba(255, 253, 248, 0.72), rgba(245, 241, 255, 0.72)),
     radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.92), transparent 9rem),
     radial-gradient(circle at 86% 18%, rgba(255, 240, 201, 0.44), transparent 9rem);
-  border-radius: 26px;
+  border-radius: 22px;
 }
 
 .shop-chest-art {
   width: 100%;
-  min-width: 138px;
-  transform: scale(1.28) translateX(-4px);
+  min-width: 86px;
+  transform: scale(1.18) translateX(-2px);
   filter:
     drop-shadow(0 22px 22px rgba(112, 91, 145, 0.16))
     drop-shadow(0 0 18px rgba(255, 255, 255, 0.48));
@@ -1218,7 +1234,7 @@ h1 {
 
 .shop-chest-copy {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   justify-items: stretch;
 }
 
@@ -1234,14 +1250,14 @@ h1 {
 }
 
 .shop-chest-button {
-  min-height: 62px;
+  min-height: 46px;
   display: grid;
   grid-template-columns: minmax(78px, 0.8fr) 1fr;
   align-items: center;
   padding: 0;
   overflow: hidden;
   border-radius: 999px;
-  font-size: 1rem;
+  font-size: 0.88rem;
 }
 
 .shop-chest-button .shop-price {
@@ -1250,14 +1266,14 @@ h1 {
 }
 
 .shop-chest-button strong {
-  font-size: 1.1rem;
+  font-size: 0.96rem;
   letter-spacing: 0.08em;
 }
 
 .shop-chest-copy p {
   margin: 0;
   color: #8d7da5;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 900;
   text-align: center;
 }
@@ -2636,16 +2652,18 @@ h1 {
   }
 
   .shop-hero {
-    min-height: 500px;
+    min-height: 330px;
   }
 
   .shopkeeper-art {
-    width: 82%;
-    right: -54px;
+    width: 48%;
+    right: -16px;
+    top: 112px;
   }
 
   .shop-dialog {
-    width: min(54%, 205px);
+    top: 240px;
+    width: min(46%, 178px);
   }
 }
 
@@ -2680,7 +2698,7 @@ h1 {
   }
 
   .shop-hero {
-    min-height: 470px;
+    min-height: 300px;
   }
 
   .shop-refresh-badge {
@@ -2690,9 +2708,9 @@ h1 {
   }
 
   .shop-dialog {
-    top: 318px;
+    top: 222px;
     right: 8px;
-    width: 58%;
+    width: 50%;
     padding: 12px;
   }
 
@@ -2701,28 +2719,28 @@ h1 {
   }
 
   .shop-goods-panel {
-    margin-top: -48px;
+    margin-top: -6px;
   }
 
   .shop-items-rail {
-    grid-auto-columns: minmax(112px, 38%);
+    gap: 5px;
   }
 
   .shop-chest-panel {
-    grid-template-columns: 1fr;
-    gap: 2px;
+    grid-template-columns: minmax(78px, 28%) minmax(0, 1fr);
+    gap: 6px;
     text-align: center;
   }
 
   .shop-chest-art {
-    width: 70%;
+    width: 100%;
     justify-self: center;
-    transform: scale(1.2);
+    transform: scale(1.12);
   }
 
   .shop-chest-copy .shop-section-title {
-    justify-items: center;
-    text-align: center;
+    justify-items: start;
+    text-align: left;
   }
 
   .item-icon svg {
