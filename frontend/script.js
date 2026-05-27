@@ -712,7 +712,7 @@ const renderLoading = () => {
 const renderShell = () => {
   setBodyView(state.view);
   app.innerHTML = `
-    <section class="app-shell">
+    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''}">
       <header class="topbar">
         <div class="profile-plaque">
           <button
@@ -912,39 +912,68 @@ const renderShop = () => {
   }
 
   return `
-    <section class="view-title">
-      <h2>星光商店</h2>
-      <p>每日刷新 5 件裝備，越稀有價格越高。</p>
-    </section>
-
-    <section class="stats-grid" aria-label="玩家狀態">
-      <div class="stat-card"><span>金幣</span><strong>${formatNumber(state.player.gold)}</strong></div>
-    </section>
-
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3>神秘盒</h3>
-          <p>每次 ${formatNumber(mysteryBoxPrice)} 金幣，依照稀有度機率隨機獲得一件裝備。</p>
+    <section class="shop-screen">
+      <section class="shop-hero" aria-label="星光商店">
+        <div class="shop-refresh-badge">每日刷新 12:00</div>
+        <img class="shopkeeper-art" src="assets/ui/shopkeeper.png" alt="星光商店店員" />
+        <div class="shop-dialog">
+          <span>歡迎光臨星光商店 ✦</span>
+          <strong>今天也為你準備了新的冒險裝備。</strong>
         </div>
-        <span class="price-pill">${formatNumber(mysteryBoxPrice)}</span>
-      </div>
-      <button class="primary-button" type="button" data-action="open-box">開啟 1 次</button>
-    </section>
+      </section>
 
-    <section class="items-grid" aria-label="商店裝備">
-      <div class="card-header">
-        <div>
-          <h3>今日商店</h3>
-          <p>${state.storeDate ? `刷新日期 ${state.storeDate}` : '每日自動刷新'}</p>
+      <section class="shop-goods-panel" aria-label="今日商品">
+        <div class="shop-section-title">
+          <span>今日商品</span>
+          <small>${state.storeDate ? `刷新日期 ${state.storeDate}` : '每日自動刷新 5 件裝備'}</small>
         </div>
-      </div>
-      ${
-        state.items.length
-          ? state.items.map(renderItemCard).join('')
-          : '<div class="empty-card">商店尚未建立裝備，請先執行 seed 或等待伺服器初始化。</div>'
-      }
+        <div class="shop-items-rail">
+          ${
+            state.items.length
+              ? state.items.map(renderShopItemCard).join('')
+              : '<div class="empty-card">商店尚未建立裝備，請先執行 seed 或等待伺服器初始化。</div>'
+          }
+        </div>
+      </section>
+
+      <section class="shop-chest-panel" aria-label="神秘寶箱">
+        <img class="shop-chest-art" src="assets/ui/treasure-chest.png" alt="神秘寶箱" />
+        <div class="shop-chest-copy">
+          <div class="shop-section-title">
+            <span>神秘寶箱</span>
+            <small>每次隨機獲得一件裝備或珍稀道具</small>
+          </div>
+          <button class="shop-chest-button" type="button" data-action="open-box">
+            <span class="shop-price">
+              <img src="assets/ui/star-currency.png" alt="星石" />
+              ${formatNumber(mysteryBoxPrice)}
+            </span>
+            <strong>開啟 1 次</strong>
+          </button>
+          <p>今日剩餘次數：10/10</p>
+        </div>
+      </section>
     </section>
+  `;
+};
+
+const renderShopItemCard = (item) => {
+  const canBuy = Number(state.player.gold || 0) >= Number(item.price || 0);
+
+  return `
+    <article class="shop-item-card" data-rarity="${escapeAttr(item.rarity || 'N')}">
+      <div class="shop-item-ornament" aria-hidden="true"></div>
+      <div class="shop-item-icon">${slotIcon(item.type, item.name, gearImageForItem(item))}</div>
+      <h3>${itemNameWithUpgrade(item)}</h3>
+      <p>${escapeHtml(item.rarity || 'N')} · ${escapeHtml(item.type)} · 戰力 +${formatNumber(item.power)}</p>
+      <button class="shop-buy-button" type="button" data-action="buy-item" data-item-id="${escapeAttr(item._id)}" ${canBuy ? '' : 'disabled'}>
+        <span class="shop-price">
+          <img src="assets/ui/star-currency.png" alt="星石" />
+          ${formatNumber(item.price)}
+        </span>
+        <span>${canBuy ? '購買' : '不足'}</span>
+      </button>
+    </article>
   `;
 };
 
