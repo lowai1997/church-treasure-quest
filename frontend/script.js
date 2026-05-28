@@ -23,6 +23,7 @@ const state = {
   outgoingTrades: [],
   petCatalog: [],
   inventorySort: localStorage.getItem('ctqInventorySort') || 'rarity-desc',
+  equipmentCharacterVersion: localStorage.getItem('ctqEquipmentCharacterVersion') || 'male',
   upgradeSelectedInventoryId: '',
   upgradeTypeFilter: localStorage.getItem('ctqUpgradeTypeFilter') || 'all',
   addGoldAmount: 100,
@@ -639,7 +640,7 @@ const renderLoading = () => {
 const renderShell = () => {
   setBodyView(state.view);
   app.innerHTML = `
-    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''} ${state.view === 'upgrade' && state.player?.role === 'student' ? 'upgrade-app-shell' : ''}">
+    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''} ${state.view === 'equipment' && state.player?.role === 'student' ? 'equipment-app-shell' : ''} ${state.view === 'upgrade' && state.player?.role === 'student' ? 'upgrade-app-shell' : ''}">
       <header class="topbar">
         <div class="profile-plaque">
           <button
@@ -936,6 +937,76 @@ const isSlotFull = (slotKey, player = state.player) => {
   return Number(player?.equipped?.[slotKey]?.length || 0) >= Number(slot?.limit || 0);
 };
 
+const equipmentSlotIconAssets = {
+  weapon: 'assets/ui/equipment/slots/slot-weapon.png',
+  helmet: 'assets/ui/equipment/slots/slot-helmet.png',
+  armor: 'assets/ui/equipment/slots/slot-armor.png',
+  pants: 'assets/ui/equipment/slots/slot-pants.png',
+  shoes: 'assets/ui/equipment/slots/slot-shoes.png',
+  accessory: 'assets/ui/equipment/slots/slot-accessory.png'
+};
+
+const equipmentCharacterAssets = {
+  male: 'assets/ui/equipment/equipment-character-male.png',
+  female: 'assets/ui/equipment/equipment-character-female.png'
+};
+
+const equipmentDisplaySlots = [
+  { slotKey: 'weapon', label: '武器 1', index: 0, side: 'left' },
+  { slotKey: 'weapon', label: '武器 2', index: 1, side: 'left' },
+  { slotKey: 'helmet', label: '頭盔', index: 0, side: 'left' },
+  { slotKey: 'armor', label: '胸甲', index: 0, side: 'left' },
+  { slotKey: 'pants', label: '褲子', index: 0, side: 'right' },
+  { slotKey: 'shoes', label: '鞋子', index: 0, side: 'right' },
+  { slotKey: 'accessory', label: '飾品 1', index: 0, side: 'right' },
+  { slotKey: 'accessory', label: '飾品 2', index: 1, side: 'right' }
+];
+
+const renderEquipmentStars = (item) => {
+  const level = Number(item?.upgradeLevel || 0);
+  const filledStars = item ? Math.min(5, Math.max(1, Math.ceil((level + 1) / 2))) : 0;
+
+  return `
+    <span class="equipment-stars" aria-label="${item ? `強化星級 ${filledStars} 星` : '未穿戴'}">
+      ${Array.from({ length: 5 })
+        .map((_, index) => `<span class="${index < filledStars ? 'filled' : ''}" aria-hidden="true">★</span>`)
+        .join('')}
+    </span>
+  `;
+};
+
+const renderEquipmentSlotCard = (displaySlot) => {
+  const slotItems = getSlotItems(displaySlot.slotKey);
+  const item = slotItems[displaySlot.index];
+  const slotIconSrc = equipmentSlotIconAssets[displaySlot.slotKey] || '';
+
+  return `
+    <article class="equipment-hero-slot ${item ? 'filled' : 'empty'}" data-slot="${escapeAttr(displaySlot.slotKey)}">
+      <div class="equipment-slot-title">
+        ${slotIconSrc ? `<img src="${escapeAttr(slotIconSrc)}" alt="" loading="lazy" />` : ''}
+        <span>${escapeHtml(displaySlot.label)}</span>
+      </div>
+      <div class="equipment-slot-preview">
+        ${
+          item
+            ? slotIcon(item.type, item.name, gearImageForItem(item))
+            : `${slotIconSrc ? `<img src="${escapeAttr(slotIconSrc)}" alt="" loading="lazy" />` : ''}`
+        }
+      </div>
+      <div class="equipment-slot-copy">
+        <strong>${item ? itemNameWithUpgrade(item) : '空'}</strong>
+        <span>${item ? `Lv. ${formatNumber(Number(item.upgradeLevel || 0))}` : '尚未穿戴'}</span>
+        ${renderEquipmentStars(item)}
+      </div>
+      ${
+        item
+          ? `<button class="equipment-unequip-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>`
+          : ''
+      }
+    </article>
+  `;
+};
+
 const renderEquipment = () => {
   if (state.player.role !== 'student') {
     return `
@@ -949,57 +1020,52 @@ const renderEquipment = () => {
 
   const equippedIds = getEquippedIds();
   const sortedItems = sortInventoryItems(state.player.items);
+  const characterVersion = state.equipmentCharacterVersion === 'female' ? 'female' : 'male';
+  const characterAsset = equipmentCharacterAssets[characterVersion] || equipmentCharacterAssets.male;
+  const leftSlots = equipmentDisplaySlots.filter((slot) => slot.side === 'left');
+  const rightSlots = equipmentDisplaySlots.filter((slot) => slot.side === 'right');
 
   return `
-    <section class="view-title">
-      <h2>裝備管理</h2>
-      <p>可穿戴 2 武器、1 頭盔、1 胸甲、1 褲、1 鞋、2 裝飾品。</p>
-    </section>
+    <section class="equipment-screen">
+      <img class="equipment-foreground-art" src="assets/ui/equipment/equipment-foreground-props.png" alt="" loading="lazy" />
 
-    <section class="stats-grid" aria-label="裝備狀態">
-      <div class="stat-card"><span>裝備戰力</span><strong>${formatNumber(state.player.equipmentPower)}</strong></div>
-      <div class="stat-card"><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
-      <div class="stat-card"><span>寵物戰力</span><strong>${formatNumber(state.player.petPower)}</strong></div>
-    </section>
+      <section class="equipment-banner" aria-label="裝備">
+        <h2>裝備</h2>
+        <p>EQUIPMENT</p>
+      </section>
 
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3>目前穿戴</h3>
-          <p>穿戴中的裝備才會計入裝備戰力。</p>
+      <section class="equipment-hero-board">
+        <div class="equipment-slot-column equipment-slot-column-left">
+          ${leftSlots.map(renderEquipmentSlotCard).join('')}
         </div>
-      </div>
-      <div class="equipment-slots">
-        ${equipmentSlots
-          .map((slot) => {
-            const slotItems = getSlotItems(slot.key);
-            return `
-              <div class="equipment-slot">
-                <strong>${slot.label} ${slotItems.length}/${slot.limit}</strong>
-                <div class="inventory-list">
-                  ${
-                    slotItems.length
-                      ? slotItems
-                          .map(
-                            (item) => `
-                              <span class="inventory-tag">
-                                ${escapeHtml(item.rarity || 'N')} ${itemNameWithUpgrade(item)} · 戰力 +${formatNumber(item.power)}
-                                <button class="tag-button" type="button" data-action="unequip-item" data-inventory-id="${escapeAttr(item.inventoryId)}">卸下</button>
-                              </span>
-                            `
-                          )
-                          .join('')
-                      : '<span class="inventory-tag">空</span>'
-                  }
-                </div>
-              </div>
-            `;
-          })
-          .join('')}
-      </div>
+
+        <div class="equipment-character-stage">
+          <img class="equipment-character-aura" src="assets/ui/equipment/equipment-character-aura.png" alt="" loading="lazy" />
+          <img class="equipment-character-art" src="${escapeAttr(characterAsset)}" alt="${characterVersion === 'female' ? '女角色' : '男角色'}" loading="lazy" />
+          <div class="equipment-character-toggle" aria-label="角色版本">
+            <button class="${characterVersion === 'male' ? 'active' : ''}" type="button" data-action="select-equipment-character" data-character-version="male" aria-pressed="${characterVersion === 'male' ? 'true' : 'false'}">男</button>
+            <button class="${characterVersion === 'female' ? 'active' : ''}" type="button" data-action="select-equipment-character" data-character-version="female" aria-pressed="${characterVersion === 'female' ? 'true' : 'false'}">女</button>
+          </div>
+        </div>
+
+        <div class="equipment-slot-column equipment-slot-column-right">
+          ${rightSlots.map(renderEquipmentSlotCard).join('')}
+        </div>
+      </section>
+
+      <section class="equipment-power-row" aria-label="戰力">
+        <div>
+          <span>裝備戰力</span>
+          <strong>${formatNumber(state.player.equipmentPower)}</strong>
+        </div>
+        <div>
+          <span>寵物戰力</span>
+          <strong>${formatNumber(state.player.petPower)}</strong>
+        </div>
+      </section>
     </section>
 
-    <section class="items-grid" aria-label="背包裝備">
+    <section class="items-grid equipment-inventory-section" aria-label="背包裝備">
       <div class="card-header">
         <div>
           <h3>背包裝備</h3>
@@ -2601,6 +2667,13 @@ app.addEventListener('click', async (event) => {
         body: JSON.stringify({ inventoryId })
       })
     );
+    return;
+  }
+
+  if (action === 'select-equipment-character') {
+    state.equipmentCharacterVersion = actionButton.dataset.characterVersion === 'female' ? 'female' : 'male';
+    localStorage.setItem('ctqEquipmentCharacterVersion', state.equipmentCharacterVersion);
+    renderShell();
     return;
   }
 
