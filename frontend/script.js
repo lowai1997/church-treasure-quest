@@ -24,6 +24,7 @@ const state = {
   petCatalog: [],
   inventorySort: localStorage.getItem('ctqInventorySort') || 'rarity-desc',
   upgradeSelectedInventoryId: '',
+  upgradeTypeFilter: localStorage.getItem('ctqUpgradeTypeFilter') || 'all',
   addGoldAmount: 100,
   boxReveal: null,
   petQuiz: null,
@@ -1754,7 +1755,40 @@ const renderBossCard = (boss) => {
   `;
 };
 
-const getUpgradeableItems = () => sortInventoryItems(state.player.items || []);
+const upgradeTypeOptions = [{ key: 'all', label: '全部' }, ...equipmentSlots.map((slot) => ({ key: slot.key, label: slot.label }))];
+
+const getUpgradeSortedItems = () => {
+  return [...(state.player.items || [])].sort((left, right) => {
+    const leftSlot = typeToSlot[left.type] || left.type || '';
+    const rightSlot = typeToSlot[right.type] || right.type || '';
+    const leftSlotIndex = equipmentSlots.findIndex((slot) => slot.key === leftSlot);
+    const rightSlotIndex = equipmentSlots.findIndex((slot) => slot.key === rightSlot);
+    const slotDiff =
+      (leftSlotIndex === -1 ? equipmentSlots.length : leftSlotIndex) -
+      (rightSlotIndex === -1 ? equipmentSlots.length : rightSlotIndex);
+
+    if (slotDiff !== 0) {
+      return slotDiff;
+    }
+
+    return (
+      (rarityRank[right.rarity] || 0) - (rarityRank[left.rarity] || 0) ||
+      Number(right.power || 0) - Number(left.power || 0) ||
+      Number(right.upgradeLevel || 0) - Number(left.upgradeLevel || 0) ||
+      String(left.name).localeCompare(String(right.name), 'zh-Hant')
+    );
+  });
+};
+
+const getUpgradeableItems = () => {
+  const sortedItems = getUpgradeSortedItems();
+
+  if (state.upgradeTypeFilter === 'all') {
+    return sortedItems;
+  }
+
+  return sortedItems.filter((item) => (typeToSlot[item.type] || item.type) === state.upgradeTypeFilter);
+};
 
 const getUpgradeSuccessRate = (item) => Math.max(10, 100 - (Number(item.upgradeLevel || 0) + 1) * 10);
 
@@ -1782,34 +1816,44 @@ const renderUpgrade = () => {
         <p>選擇要升級的裝備</p>
       </section>
 
-      <section class="upgrade-status-strip" aria-label="升級狀態">
-        <div><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
-        <div><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
-        <div><span>裝備</span><strong>${formatNumber(upgradeItems.length)}</strong></div>
-      </section>
-
       ${
-        upgradeItems.length
+        getUpgradeSortedItems().length
           ? `
             <section class="upgrade-game-board">
               <aside class="upgrade-list-panel" aria-label="可升級裝備">
+                <div class="upgrade-type-tabs" aria-label="裝備種類">
+                  ${upgradeTypeOptions
+                    .map(
+                      (option) => `
+                        <button
+                          class="${state.upgradeTypeFilter === option.key ? 'active' : ''}"
+                          type="button"
+                          data-action="filter-upgrade-type"
+                          data-upgrade-type="${escapeAttr(option.key)}"
+                          aria-pressed="${state.upgradeTypeFilter === option.key ? 'true' : 'false'}"
+                        >
+                          ${escapeHtml(option.label)}
+                        </button>
+                      `
+                    )
+                    .join('')}
+                </div>
                 <div class="upgrade-list">
-                  ${upgradeItems.map((item) => renderUpgradeListItem(item, selectedItem)).join('')}
+                  ${
+                    upgradeItems.length
+                      ? upgradeItems.map((item) => renderUpgradeListItem(item, selectedItem)).join('')
+                      : '<div class="upgrade-list-empty">此類別暫無裝備。</div>'
+                  }
                 </div>
                 <div class="upgrade-list-foot">
                   <button class="upgrade-page-button" type="button" aria-label="上一頁" disabled>‹</button>
-                  <span>1 / 1</span>
+                  <span>${formatNumber(upgradeItems.length)} 件</span>
                   <button class="upgrade-page-button" type="button" aria-label="下一頁" disabled>›</button>
                 </div>
               </aside>
 
-              ${renderUpgradeDetail(selectedItem)}
+              ${selectedItem ? renderUpgradeDetail(selectedItem) : '<div class="upgrade-empty-card">請選擇其他裝備種類。</div>'}
             </section>
-
-            <aside class="upgrade-guide-note" aria-label="升級提示">
-              <h3>裝備升級</h3>
-              <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；成功率會隨等級逐步下降。</p>
-            </aside>
           `
           : '<div class="upgrade-empty-card">背包尚無裝備，可先到商店購買或開神秘盒。</div>'
       }
@@ -1862,7 +1906,6 @@ const renderUpgradeDetail = (item) => {
 
   return `
     <article class="upgrade-detail-panel" data-rarity="${escapeAttr(item?.rarity || 'N')}">
-      <div class="upgrade-panel-crown" aria-hidden="true">✦</div>
       <h3>${escapeHtml(item?.name || '裝備')}</h3>
 
       <div class="upgrade-item-stage">
@@ -1905,7 +1948,6 @@ const renderUpgradeDetail = (item) => {
       <button class="upgrade-start-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item?.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>
         ${maxed ? `已達 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '開始升級' : '金幣不足'}
       </button>
-      <p class="upgrade-rarity-line">${escapeHtml(rarityLabels[item?.rarity] || item?.rarity || '普通')} · ${escapeHtml(item?.type || '裝備')}</p>
     </article>
   `;
 };
@@ -2564,6 +2606,14 @@ app.addEventListener('click', async (event) => {
 
   if (action === 'select-upgrade-item') {
     state.upgradeSelectedInventoryId = actionButton.dataset.inventoryId;
+    renderShell();
+    return;
+  }
+
+  if (action === 'filter-upgrade-type') {
+    state.upgradeTypeFilter = actionButton.dataset.upgradeType || 'all';
+    state.upgradeSelectedInventoryId = '';
+    localStorage.setItem('ctqUpgradeTypeFilter', state.upgradeTypeFilter);
     renderShell();
     return;
   }
