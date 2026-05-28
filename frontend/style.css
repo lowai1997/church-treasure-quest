@@ -888,8 +888,10 @@ h1 {
 
 .equipment-app-shell {
   position: relative;
+  min-height: 100dvh;
+  height: 100dvh;
   overflow: hidden;
-  padding: 0 0 calc(112px + env(safe-area-inset-bottom));
+  padding: 0;
   background:
     radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.46), transparent 28rem),
     linear-gradient(180deg, #e9e2ff 0%, #fff8ef 58%, #f5f0ff 100%);
@@ -939,6 +941,9 @@ h1 {
 }
 
 .equipment-app-shell .content-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   gap: 0;
 }
 
@@ -1132,12 +1137,16 @@ h1 {
 }
 
 .equipment-screen {
+  --equipment-top-clearance: 76px;
+  --equipment-bottom-clearance: calc(128px + env(safe-area-inset-bottom));
   position: relative;
-  height: calc(100dvh - 102px);
+  height: 100%;
   min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   isolation: isolate;
   overflow: hidden;
-  padding: 76px 10px calc(98px + env(safe-area-inset-bottom));
+  padding: var(--equipment-top-clearance) 10px var(--equipment-bottom-clearance);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0) 0 62%, rgba(246, 239, 255, 0.72) 86%, rgba(255, 250, 244, 0.96) 100%),
     url("./assets/ui/equipment/equipment-bg-cathedral.png") top center / cover no-repeat;
@@ -1229,6 +1238,7 @@ h1 {
 .equipment-hero-board {
   position: relative;
   z-index: 5;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(108px, 0.78fr) minmax(0, 1.18fr) minmax(108px, 0.78fr);
   gap: 7px;
@@ -1239,16 +1249,18 @@ h1 {
   position: relative;
   z-index: 5;
   display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   gap: 7px;
   align-content: start;
+  min-height: 0;
 }
 
 .equipment-hero-slot {
   position: relative;
   min-width: 0;
-  min-height: 94px;
+  min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(38px, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 3px;
   overflow: hidden;
   padding: 8px 7px 7px;
@@ -1365,7 +1377,8 @@ h1 {
 .equipment-character-stage {
   position: relative;
   z-index: 3;
-  min-height: 414px;
+  min-height: 0;
+  height: 100%;
   display: grid;
   place-items: end center;
   overflow: visible;
@@ -1389,7 +1402,7 @@ h1 {
   position: relative;
   z-index: 2;
   width: min(156%, 328px);
-  max-height: 444px;
+  max-height: min(100%, 444px);
   object-fit: contain;
   object-position: center bottom;
   filter:
@@ -1438,6 +1451,7 @@ h1 {
 
 .equipment-power-row {
   z-index: 5;
+  align-self: end;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -4349,6 +4363,11 @@ h1 {
       0 0 50px rgba(185, 173, 242, 0.18);
   }
 
+  .equipment-app-shell {
+    min-height: calc(100dvh - 36px);
+    height: calc(100dvh - 36px);
+  }
+
   .bottom-nav {
     bottom: 18px;
     border: 1px solid rgba(216, 184, 111, 0.24);
@@ -4473,7 +4492,7 @@ h1 {
   }
 
   .equipment-hero-slot {
-    min-height: 86px;
+    min-height: 0;
     padding: 7px 6px;
   }
 
@@ -4482,7 +4501,7 @@ h1 {
   }
 
   .equipment-character-stage {
-    min-height: 388px;
+    min-height: 0;
   }
 
   .equipment-character-art {
@@ -4558,11 +4577,10 @@ h1 {
   }
 
   .equipment-screen {
-    height: calc(100dvh - 98px);
-    padding-top: 72px;
+    --equipment-top-clearance: 72px;
+    --equipment-bottom-clearance: calc(120px + env(safe-area-inset-bottom));
     padding-right: 7px;
     padding-left: 7px;
-    padding-bottom: 96px;
   }
 
   .upgrade-screen {
@@ -4645,7 +4663,7 @@ h1 {
   }
 
   .equipment-hero-slot {
-    min-height: 76px;
+    min-height: 0;
     padding: 6px 5px;
     border-radius: 14px;
   }
@@ -4685,7 +4703,7 @@ h1 {
   }
 
   .equipment-character-stage {
-    min-height: 336px;
+    min-height: 0;
   }
 
   .equipment-character-toggle {
@@ -4702,7 +4720,7 @@ h1 {
 
   .equipment-character-art {
     width: min(192%, 248px);
-    max-height: 352px;
+    max-height: min(100%, 352px);
   }
 
   .equipment-character-aura {
