@@ -92,7 +92,21 @@ body[data-view="pets"] {
     linear-gradient(180deg, #fffdf8 0%, #fff4ea 40%, #f7f4ff 100%);
 }
 
-body[data-view="boss"],
+body[data-view="boss"] {
+  background:
+    linear-gradient(180deg, rgba(54, 42, 83, 0.18) 0%, rgba(255, 250, 244, 0.42) 54%, rgba(246, 239, 255, 0.9) 100%),
+    url("./assets/ui/challenge/background.png") center top / cover no-repeat,
+    linear-gradient(180deg, #f4ecff 0%, #fff8ed 48%, #eef9ff 100%);
+}
+
+body[data-view="boss"]::before {
+  opacity: 0;
+}
+
+body[data-view="boss"]::after {
+  opacity: 0.34;
+}
+
 body[data-view="rank"] {
   background:
     radial-gradient(circle at 50% 0%, rgba(245, 223, 170, 0.95), transparent 18rem),

@@ -641,7 +641,7 @@ const renderLoading = () => {
 const renderShell = () => {
   setBodyView(state.view);
   app.innerHTML = `
-    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''} ${state.view === 'equipment' && state.player?.role === 'student' ? 'equipment-app-shell' : ''} ${state.view === 'upgrade' && state.player?.role === 'student' ? 'upgrade-app-shell' : ''}">
+    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''} ${state.view === 'equipment' && state.player?.role === 'student' ? 'equipment-app-shell' : ''} ${state.view === 'upgrade' && state.player?.role === 'student' ? 'upgrade-app-shell' : ''} ${state.view === 'boss' ? 'boss-app-shell' : ''}">
       <header class="topbar">
         <div class="profile-plaque">
           <button
