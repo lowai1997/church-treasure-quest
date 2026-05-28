@@ -23,6 +23,7 @@ const state = {
   outgoingTrades: [],
   petCatalog: [],
   inventorySort: localStorage.getItem('ctqInventorySort') || 'rarity-desc',
+  upgradeSelectedInventoryId: '',
   addGoldAmount: 100,
   boxReveal: null,
   petQuiz: null,
@@ -637,7 +638,7 @@ const renderLoading = () => {
 const renderShell = () => {
   setBodyView(state.view);
   app.innerHTML = `
-    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''}">
+    <section class="app-shell ${state.view === 'shop' && state.player?.role === 'student' ? 'shop-app-shell' : ''} ${state.view === 'hunt' && state.player?.role === 'student' ? 'mission-app-shell' : ''} ${state.view === 'upgrade' && state.player?.role === 'student' ? 'upgrade-app-shell' : ''}">
       <header class="topbar">
         <div class="profile-plaque">
           <button
@@ -1769,26 +1770,143 @@ const renderUpgrade = () => {
   }
 
   const upgradeItems = getUpgradeableItems();
+  const selectedItem = upgradeItems.find((item) => item.inventoryId === state.upgradeSelectedInventoryId) || upgradeItems[0];
 
   return `
-    <section class="view-title">
-      <h2>裝備升級</h2>
-      <p>每次升級消耗 ${tokenAmount(upgradeCost)}。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；成功率會隨等級逐步下降。</p>
-    </section>
+    <section class="upgrade-screen">
+      <img class="upgrade-guide-art" src="assets/ui/upgrade/upgrade-guide-blacksmith.png" alt="星殿鍛造師" loading="lazy" />
+      <img class="upgrade-foreground-art" src="assets/ui/upgrade/upgrade-foreground-props.png" alt="" loading="lazy" />
 
-    <section class="stats-grid">
-      <div class="stat-card"><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
-      <div class="stat-card"><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
-      <div class="stat-card"><span>裝備數</span><strong>${formatNumber(upgradeItems.length)}</strong></div>
-    </section>
+      <section class="upgrade-banner" aria-label="裝備升級">
+        <h2>裝備升級</h2>
+        <p>選擇要升級的裝備</p>
+      </section>
 
-    <section class="items-grid">
+      <section class="upgrade-status-strip" aria-label="升級狀態">
+        <div><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
+        <div><span>戰力</span><strong>${formatNumber(totalPower(state.player))}</strong></div>
+        <div><span>裝備</span><strong>${formatNumber(upgradeItems.length)}</strong></div>
+      </section>
+
       ${
         upgradeItems.length
-          ? upgradeItems.map(renderUpgradeCard).join('')
-          : '<div class="empty-card">背包尚無裝備，可先到商店購買或開神秘盒。</div>'
+          ? `
+            <section class="upgrade-game-board">
+              <aside class="upgrade-list-panel" aria-label="可升級裝備">
+                <div class="upgrade-list">
+                  ${upgradeItems.map((item) => renderUpgradeListItem(item, selectedItem)).join('')}
+                </div>
+                <div class="upgrade-list-foot">
+                  <button class="upgrade-page-button" type="button" aria-label="上一頁" disabled>‹</button>
+                  <span>1 / 1</span>
+                  <button class="upgrade-page-button" type="button" aria-label="下一頁" disabled>›</button>
+                </div>
+              </aside>
+
+              ${renderUpgradeDetail(selectedItem)}
+            </section>
+
+            <aside class="upgrade-guide-note" aria-label="升級提示">
+              <h3>裝備升級</h3>
+              <p>每次升級消耗 ${formatNumber(upgradeCost)} 金幣。成功後裝備 +1，戰力 +${formatNumber(upgradePowerGain)}；成功率會隨等級逐步下降。</p>
+            </aside>
+          `
+          : '<div class="upgrade-empty-card">背包尚無裝備，可先到商店購買或開神秘盒。</div>'
       }
     </section>
+  `;
+};
+
+const renderUpgradeStars = (item) => {
+  const level = Number(item.upgradeLevel || 0);
+  const filledStars = Math.min(5, Math.max(1, Math.ceil((level + 1) / 2)));
+
+  return `
+    <span class="upgrade-stars" aria-label="強化星級 ${filledStars} 星">
+      ${Array.from({ length: 5 })
+        .map((_, index) => `<span class="${index < filledStars ? 'filled' : ''}" aria-hidden="true">★</span>`)
+        .join('')}
+    </span>
+  `;
+};
+
+const renderUpgradeListItem = (item, selectedItem) => {
+  const selected = selectedItem?.inventoryId === item.inventoryId;
+  const level = Number(item.upgradeLevel || 0);
+
+  return `
+    <button
+      class="upgrade-list-item ${selected ? 'active' : ''}"
+      type="button"
+      data-action="select-upgrade-item"
+      data-inventory-id="${escapeAttr(item.inventoryId)}"
+      aria-pressed="${selected ? 'true' : 'false'}"
+    >
+      <span class="upgrade-list-icon">${slotIcon(item.type, item.name, gearImageForItem(item))}</span>
+      <span class="upgrade-list-copy">
+        <strong>${itemNameWithUpgrade(item)}</strong>
+        <span>Lv. ${formatNumber(level)}</span>
+        ${renderUpgradeStars(item)}
+      </span>
+    </button>
+  `;
+};
+
+const renderUpgradeDetail = (item) => {
+  const level = Number(item?.upgradeLevel || 0);
+  const maxed = level >= maxUpgradeLevel;
+  const canAfford = Number(state.player.gold || 0) >= upgradeCost;
+  const successRate = getUpgradeSuccessRate(item);
+  const nextLevel = Math.min(maxUpgradeLevel, level + 1);
+  const nextPower = Number(item?.power || 0) + (maxed ? 0 : upgradePowerGain);
+
+  return `
+    <article class="upgrade-detail-panel" data-rarity="${escapeAttr(item?.rarity || 'N')}">
+      <div class="upgrade-panel-crown" aria-hidden="true">✦</div>
+      <h3>${escapeHtml(item?.name || '裝備')}</h3>
+
+      <div class="upgrade-item-stage">
+        <img class="upgrade-sigil" src="assets/ui/upgrade/upgrade-magic-sigil.png" alt="" loading="lazy" />
+        <div class="upgrade-featured-icon">${slotIcon(item?.type, item?.name, gearImageForItem(item))}</div>
+      </div>
+
+      <div class="upgrade-level-row" aria-label="升級等級">
+        <span>Lv. ${formatNumber(level)}</span>
+        <span aria-hidden="true">»»</span>
+        <span>Lv. <strong>${formatNumber(nextLevel)}</strong></span>
+      </div>
+
+      <div class="upgrade-power-row" aria-label="升級戰力">
+        <span>⚔ 戰力 ${formatNumber(item?.power || 0)}</span>
+        <span aria-hidden="true">»</span>
+        <span>戰力 <strong>+${formatNumber(nextPower)}</strong></span>
+      </div>
+
+      <div class="upgrade-rate-box">
+        <span class="upgrade-rate-label">成功率</span>
+        <strong>${maxed ? 'MAX' : `${formatNumber(successRate)}%`}</strong>
+        <div class="upgrade-rate-track" style="--rate: ${maxed ? 100 : successRate}%">
+          <span></span>
+        </div>
+        <div class="upgrade-rate-scale" aria-hidden="true">
+          <span>100%</span>
+          <span>80%</span>
+          <span>60%</span>
+          <span>40%</span>
+          <span>20%</span>
+        </div>
+      </div>
+
+      <div class="upgrade-cost-row">
+        <span>消耗金幣</span>
+        <strong>${tokenAmount(upgradeCost)}</strong>
+      </div>
+
+      <button class="upgrade-start-button" type="button" data-action="upgrade-item" data-inventory-id="${escapeAttr(item?.inventoryId)}" ${maxed || !canAfford ? 'disabled' : ''}>
+        ${maxed ? `已達 +${formatNumber(maxUpgradeLevel)}` : canAfford ? '開始升級' : '金幣不足'}
+      </button>
+      <p class="upgrade-rarity-line">${escapeHtml(rarityLabels[item?.rarity] || item?.rarity || '普通')} · ${escapeHtml(item?.type || '裝備')}</p>
+    </article>
   `;
 };
 
@@ -2441,6 +2559,12 @@ app.addEventListener('click', async (event) => {
         body: JSON.stringify({ inventoryId })
       })
     );
+    return;
+  }
+
+  if (action === 'select-upgrade-item') {
+    state.upgradeSelectedInventoryId = actionButton.dataset.inventoryId;
+    renderShell();
     return;
   }
 
