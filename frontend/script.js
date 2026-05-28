@@ -30,6 +30,7 @@ const state = {
   boxReveal: null,
   petQuiz: null,
   avatarPickerOpen: false,
+  equipmentSlotPicker: null,
   busy: false
 };
 
@@ -682,6 +683,7 @@ const renderShell = () => {
       ${state.boxReveal ? renderBoxReveal() : ''}
       ${state.petQuiz ? renderPetQuiz() : ''}
       ${state.avatarPickerOpen ? renderAvatarModal() : ''}
+      ${state.equipmentSlotPicker ? renderEquipmentSlotModal() : ''}
     </section>
   `;
   syncBossTimers();
@@ -981,7 +983,17 @@ const renderEquipmentSlotCard = (displaySlot) => {
   const slotIconSrc = equipmentSlotIconAssets[displaySlot.slotKey] || '';
 
   return `
-    <article class="equipment-hero-slot ${item ? 'filled' : 'empty'}" data-slot="${escapeAttr(displaySlot.slotKey)}">
+    <article
+      class="equipment-hero-slot ${item ? 'filled' : 'empty'}"
+      data-action="open-equipment-slot"
+      data-slot-key="${escapeAttr(displaySlot.slotKey)}"
+      data-slot-index="${escapeAttr(displaySlot.index)}"
+      data-slot-label="${escapeAttr(displaySlot.label)}"
+      data-current-inventory-id="${escapeAttr(item?.inventoryId || '')}"
+      data-slot="${escapeAttr(displaySlot.slotKey)}"
+      role="button"
+      tabindex="0"
+    >
       <div class="equipment-slot-title">
         ${slotIconSrc ? `<img src="${escapeAttr(slotIconSrc)}" alt="" loading="lazy" />` : ''}
         <span>${escapeHtml(displaySlot.label)}</span>
@@ -1007,6 +1019,62 @@ const renderEquipmentSlotCard = (displaySlot) => {
   `;
 };
 
+const renderEquipmentSlotModal = () => {
+  const picker = state.equipmentSlotPicker || {};
+  const slotKey = picker.slotKey || '';
+  const slot = equipmentSlots.find((item) => item.key === slotKey);
+  const currentInventoryId = picker.currentInventoryId || '';
+  const equippedIds = getEquippedIds();
+  const slotIconSrc = equipmentSlotIconAssets[slotKey] || '';
+  const slotItems = sortInventoryItems((state.player.items || []).filter((item) => (typeToSlot[item.type] || item.type) === slotKey));
+  const currentItem = (state.player.items || []).find((item) => item.inventoryId === currentInventoryId);
+
+  return `
+    <div class="modal-backdrop equipment-slot-backdrop" role="dialog" aria-modal="true" aria-label="${escapeAttr(picker.label || slot?.label || '裝備')}更換">
+      <section class="equipment-slot-modal">
+        <div class="equipment-slot-modal-header">
+          <div>
+            <span>${slotIconSrc ? `<img src="${escapeAttr(slotIconSrc)}" alt="" loading="lazy" />` : ''}</span>
+            <div>
+              <h3>${escapeHtml(picker.label || slot?.label || '裝備')}</h3>
+              <p>${currentItem ? `目前：${itemNameWithUpgrade(currentItem)}` : '目前未穿戴'}</p>
+            </div>
+          </div>
+          <button class="icon-button" type="button" data-action="close-equipment-slot" aria-label="關閉">關閉</button>
+        </div>
+        <div class="equipment-slot-choice-list">
+          ${
+            slotItems.length
+              ? slotItems
+                  .map((item) => {
+                    const isCurrent = item.inventoryId === currentInventoryId;
+                    const isEquipped = equippedIds.has(item.inventoryId);
+                    return `
+                      <article class="equipment-slot-choice ${isCurrent ? 'current' : ''}">
+                        <div class="equipment-slot-choice-icon">${slotIcon(item.type, item.name, gearImageForItem(item))}</div>
+                        <div>
+                          <strong>${itemNameWithUpgrade(item)}</strong>
+                          <span>${escapeHtml(item.rarity || 'N')} · Lv. ${formatNumber(Number(item.upgradeLevel || 0))} · 戰力 +${formatNumber(item.power)}</span>
+                        </div>
+                        ${
+                          isCurrent
+                            ? '<button class="mini-button" type="button" disabled>目前穿戴</button>'
+                            : isEquipped
+                              ? '<button class="mini-button" type="button" disabled>已在其他欄位</button>'
+                              : `<button class="mini-button" type="button" data-action="replace-equipment-slot" data-inventory-id="${escapeAttr(item.inventoryId)}" data-current-inventory-id="${escapeAttr(currentInventoryId)}">更換</button>`
+                        }
+                      </article>
+                    `;
+                  })
+                  .join('')
+              : '<div class="empty-card">此類型暫無可穿戴裝備。</div>'
+          }
+        </div>
+      </section>
+    </div>
+  `;
+};
+
 const renderEquipment = () => {
   if (state.player.role !== 'student') {
     return `
@@ -1027,8 +1095,6 @@ const renderEquipment = () => {
 
   return `
     <section class="equipment-screen">
-      <img class="equipment-foreground-art" src="assets/ui/equipment/equipment-foreground-props.png" alt="" loading="lazy" />
-
       <section class="equipment-banner" aria-label="裝備">
         <h2>裝備</h2>
         <p>EQUIPMENT</p>
@@ -2677,6 +2743,43 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action === 'open-equipment-slot') {
+    state.equipmentSlotPicker = {
+      slotKey: actionButton.dataset.slotKey,
+      index: Number(actionButton.dataset.slotIndex || 0),
+      label: actionButton.dataset.slotLabel,
+      currentInventoryId: actionButton.dataset.currentInventoryId || ''
+    };
+    renderShell();
+    return;
+  }
+
+  if (action === 'close-equipment-slot') {
+    state.equipmentSlotPicker = null;
+    renderShell();
+    return;
+  }
+
+  if (action === 'replace-equipment-slot') {
+    const inventoryId = actionButton.dataset.inventoryId;
+    const currentInventoryId = actionButton.dataset.currentInventoryId;
+    state.equipmentSlotPicker = null;
+    await runAction(async () => {
+      if (currentInventoryId) {
+        await api('/api/unequipItem', {
+          method: 'POST',
+          body: JSON.stringify({ inventoryId: currentInventoryId })
+        });
+      }
+
+      return api('/api/equipItem', {
+        method: 'POST',
+        body: JSON.stringify({ inventoryId })
+      });
+    });
+    return;
+  }
+
   if (action === 'select-upgrade-item') {
     state.upgradeSelectedInventoryId = actionButton.dataset.inventoryId;
     renderShell();
@@ -2874,6 +2977,7 @@ app.addEventListener('click', async (event) => {
   if (action === 'unequip-item') {
     const inventoryId = actionButton.dataset.inventoryId;
     const playerId = actionButton.dataset.playerId;
+    state.equipmentSlotPicker = null;
     await runAction(() =>
       api('/api/unequipItem', {
         method: 'POST',

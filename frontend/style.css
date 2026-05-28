@@ -969,50 +969,47 @@ h1 {
   overflow: hidden;
   padding: 0;
   background:
-    radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.42), transparent 28rem),
-    linear-gradient(180deg, #ebe1ff 0%, #fff7ef 62%, #f5efff 100%);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.14), rgba(245, 241, 255, 0.2)),
+    url("./assets/ui/upgrade/upgrade-bg-cathedral-forge.png") center top / cover no-repeat;
 }
 
 .upgrade-app-shell .topbar {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 10px;
+  position: relative;
+  inset: auto;
   z-index: 12;
-  padding: 0;
+  padding: 10px 10px 8px;
 }
 
 .upgrade-app-shell .profile-plaque {
-  max-width: 236px;
-  padding: 6px 10px 6px 6px;
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.72), rgba(246, 239, 255, 0.58));
+    linear-gradient(180deg, rgba(255, 253, 248, 0.84), rgba(245, 241, 255, 0.68));
   border-color: rgba(255, 255, 255, 0.54);
-  box-shadow: 0 12px 28px rgba(84, 71, 116, 0.16);
+  box-shadow: 0 13px 28px rgba(82, 64, 102, 0.16);
+  backdrop-filter: blur(12px);
 }
 
 .upgrade-app-shell .profile-meter {
-  display: none;
+  display: block;
 }
 
 .upgrade-app-shell .top-actions {
-  grid-template-columns: 1fr auto;
-  align-items: start;
+  grid-template-columns: none;
+  align-items: initial;
 }
 
 .upgrade-app-shell .wallet {
-  min-height: 44px;
-  padding: 0 16px 0 12px;
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(249, 238, 224, 0.82));
-  border-color: rgba(216, 184, 111, 0.48);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.62),
-    0 12px 26px rgba(91, 75, 123, 0.18);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.84), rgba(245, 241, 255, 0.68));
+  border-color: rgba(255, 255, 255, 0.54);
+  box-shadow: 0 13px 28px rgba(82, 64, 102, 0.16);
+  backdrop-filter: blur(12px);
 }
 
 .upgrade-app-shell .icon-button {
-  background: rgba(255, 253, 248, 0.58);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.84), rgba(245, 241, 255, 0.68));
+  border-color: rgba(255, 255, 255, 0.54);
+  box-shadow: 0 13px 28px rgba(82, 64, 102, 0.16);
   backdrop-filter: blur(12px);
 }
 
@@ -1136,10 +1133,11 @@ h1 {
 
 .equipment-screen {
   position: relative;
-  min-height: calc(100dvh - 112px);
+  height: calc(100dvh - 102px);
+  min-height: 0;
   isolation: isolate;
   overflow: hidden;
-  padding: 82px 10px 112px;
+  padding: 76px 10px calc(98px + env(safe-area-inset-bottom));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0) 0 62%, rgba(246, 239, 255, 0.72) 86%, rgba(255, 250, 244, 0.96) 100%),
     url("./assets/ui/equipment/equipment-bg-cathedral.png") top center / cover no-repeat;
@@ -1177,6 +1175,7 @@ h1 {
 }
 
 .equipment-foreground-art {
+  display: none;
   position: absolute;
   left: -18%;
   bottom: -28px;
@@ -1191,12 +1190,12 @@ h1 {
 .equipment-banner {
   z-index: 4;
   width: min(57%, 286px);
-  min-height: 72px;
+  min-height: 62px;
   display: grid;
   align-content: center;
   justify-items: center;
-  margin: 0 0 12px -20px;
-  padding: 12px 24px 12px 34px;
+  margin: 0 0 8px -20px;
+  padding: 10px 24px 10px 34px;
   color: #5f4f83;
   text-align: center;
   background:
@@ -1210,9 +1209,9 @@ h1 {
 }
 
 .equipment-banner h2 {
-  margin: 0 0 3px;
+  margin: 0 0 2px;
   color: #6a4f95;
-  font-size: clamp(1.78rem, 8vw, 2.42rem);
+  font-size: clamp(1.62rem, 7.4vw, 2.18rem);
   line-height: 1;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -1228,28 +1227,31 @@ h1 {
 }
 
 .equipment-hero-board {
+  position: relative;
   z-index: 5;
   display: grid;
-  grid-template-columns: minmax(112px, 0.82fr) minmax(0, 1.15fr) minmax(112px, 0.82fr);
-  gap: 8px;
+  grid-template-columns: minmax(108px, 0.78fr) minmax(0, 1.18fr) minmax(108px, 0.78fr);
+  gap: 7px;
   align-items: stretch;
 }
 
 .equipment-slot-column {
+  position: relative;
+  z-index: 5;
   display: grid;
-  gap: 8px;
+  gap: 7px;
   align-content: start;
 }
 
 .equipment-hero-slot {
   position: relative;
   min-width: 0;
-  min-height: 112px;
+  min-height: 94px;
   display: grid;
-  grid-template-rows: auto minmax(48px, 1fr) auto;
-  gap: 4px;
+  grid-template-rows: auto minmax(38px, 1fr) auto;
+  gap: 3px;
   overflow: hidden;
-  padding: 9px 8px 8px;
+  padding: 8px 7px 7px;
   color: #5f5270;
   background:
     linear-gradient(180deg, rgba(255, 253, 248, 0.88), rgba(255, 245, 236, 0.8)),
@@ -1260,21 +1262,22 @@ h1 {
     inset 0 0 0 1px rgba(255, 255, 255, 0.64),
     0 14px 28px rgba(91, 75, 123, 0.14);
   backdrop-filter: blur(10px);
+  cursor: pointer;
 }
 
 .equipment-slot-title {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr);
   align-items: center;
   gap: 5px;
   color: #6a557c;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 900;
 }
 
 .equipment-slot-title img {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(91, 75, 123, 0.14));
 }
@@ -1286,7 +1289,7 @@ h1 {
 }
 
 .equipment-slot-preview {
-  min-height: 54px;
+  min-height: 40px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -1318,7 +1321,7 @@ h1 {
 .equipment-slot-copy strong {
   overflow: hidden;
   color: #5a457a;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   line-height: 1.22;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -1327,7 +1330,7 @@ h1 {
 
 .equipment-slot-copy > span:not(.equipment-stars) {
   color: #7f7193;
-  font-size: 0.66rem;
+  font-size: 0.6rem;
   font-weight: 900;
 }
 
@@ -1336,7 +1339,7 @@ h1 {
   align-items: center;
   gap: 1px;
   color: rgba(151, 139, 166, 0.34);
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   line-height: 1;
 }
 
@@ -1347,21 +1350,22 @@ h1 {
 
 .equipment-unequip-button {
   position: absolute;
-  right: 7px;
-  bottom: 7px;
-  min-height: 24px;
-  padding: 0 8px;
+  right: 6px;
+  bottom: 6px;
+  min-height: 22px;
+  padding: 0 7px;
   color: #5a457a;
   background: rgba(255, 253, 248, 0.84);
   border: 1px solid rgba(216, 184, 111, 0.26);
   border-radius: 999px;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 900;
 }
 
 .equipment-character-stage {
   position: relative;
-  min-height: 520px;
+  z-index: 3;
+  min-height: 414px;
   display: grid;
   place-items: end center;
   overflow: visible;
@@ -1371,6 +1375,7 @@ h1 {
   position: absolute;
   left: 50%;
   top: 4%;
+  z-index: 0;
   width: min(136%, 430px);
   transform: translateX(-50%);
   opacity: 0.78;
@@ -1383,8 +1388,8 @@ h1 {
 .equipment-character-art {
   position: relative;
   z-index: 2;
-  width: min(142%, 370px);
-  max-height: 560px;
+  width: min(156%, 328px);
+  max-height: 444px;
   object-fit: contain;
   object-position: center bottom;
   filter:
@@ -1397,7 +1402,7 @@ h1 {
   position: absolute;
   left: 50%;
   top: 7px;
-  z-index: 3;
+  z-index: 6;
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
   gap: 3px;
@@ -1436,12 +1441,12 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin: 14px auto 0;
+  margin: 8px auto 0;
   width: min(100%, 430px);
 }
 
 .equipment-power-row div {
-  min-height: 74px;
+  min-height: 58px;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -1459,13 +1464,13 @@ h1 {
 
 .equipment-power-row span {
   color: #8b7e9c;
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 900;
 }
 
 .equipment-power-row strong {
   color: #6a4f95;
-  font-size: clamp(1.42rem, 7vw, 2.1rem);
+  font-size: clamp(1.24rem, 6vw, 1.72rem);
   line-height: 1;
   font-weight: 500;
 }
@@ -1474,16 +1479,144 @@ h1 {
   padding: 12px 10px 16px;
 }
 
+.equipment-slot-backdrop {
+  z-index: 60;
+}
+
+.equipment-slot-modal {
+  width: min(100%, 480px);
+  max-height: min(78dvh, 640px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(246, 239, 255, 0.94));
+  border: 1px solid rgba(216, 184, 111, 0.38);
+  border-radius: 24px;
+  box-shadow: var(--shadow), var(--inner-glow);
+}
+
+.equipment-slot-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid rgba(184, 156, 104, 0.18);
+}
+
+.equipment-slot-modal-header > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.equipment-slot-modal-header span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.96), transparent 52%),
+    linear-gradient(145deg, rgba(245, 241, 255, 0.94), rgba(255, 245, 236, 0.88));
+  border: 1px solid rgba(185, 173, 242, 0.36);
+  border-radius: 14px;
+}
+
+.equipment-slot-modal-header img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.equipment-slot-modal-header h3 {
+  margin: 0 0 3px;
+  color: var(--ink-strong);
+  font-size: 1.12rem;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.equipment-slot-modal-header p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equipment-slot-choice-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.equipment-slot-choice {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.9), rgba(255, 245, 236, 0.78));
+  border: 1px solid rgba(216, 184, 111, 0.24);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.54);
+}
+
+.equipment-slot-choice.current {
+  border-color: rgba(185, 123, 202, 0.46);
+  background:
+    linear-gradient(180deg, rgba(255, 247, 252, 0.94), rgba(238, 229, 255, 0.84));
+}
+
+.equipment-slot-choice-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.95), transparent 52%),
+    linear-gradient(145deg, rgba(245, 241, 255, 0.95), rgba(255, 245, 236, 0.9));
+  border: 1px solid rgba(185, 173, 242, 0.42);
+  border-radius: 15px;
+}
+
+.equipment-slot-choice strong {
+  display: block;
+  color: var(--ink-strong);
+  font-size: 0.92rem;
+  line-height: 1.28;
+  font-weight: 900;
+}
+
+.equipment-slot-choice span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
 .upgrade-screen {
   position: relative;
-  height: 100dvh;
+  height: calc(100dvh - 86px);
   min-height: 0;
   isolation: isolate;
   overflow: hidden;
-  padding: 74px 9px calc(96px + env(safe-area-inset-bottom));
+  padding: 6px 9px calc(96px + env(safe-area-inset-bottom));
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0) 0 61%, rgba(246, 239, 255, 0.74) 86%, rgba(255, 250, 244, 0.95) 100%),
-    url("./assets/ui/upgrade/upgrade-bg-cathedral-forge.png") top center / cover no-repeat;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0 61%, rgba(246, 239, 255, 0.74) 86%, rgba(255, 250, 244, 0.95) 100%);
 }
 
 .upgrade-screen::before {
@@ -1622,7 +1755,7 @@ h1 {
 
 .upgrade-game-board {
   z-index: 5;
-  height: calc(100dvh - 250px - env(safe-area-inset-bottom));
+  height: calc(100dvh - 268px - env(safe-area-inset-bottom));
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(136px, 0.76fr) minmax(0, 1.24fr);
@@ -1655,10 +1788,19 @@ h1 {
 }
 
 .upgrade-type-tabs {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
   display: flex;
   gap: 5px;
   overflow-x: auto;
-  padding: 1px 1px 7px;
+  margin-bottom: 7px;
+  padding: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.78), rgba(246, 239, 255, 0.62));
+  border: 1px solid rgba(216, 184, 111, 0.22);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.52);
   scrollbar-width: none;
 }
 
@@ -1688,6 +1830,8 @@ h1 {
 }
 
 .upgrade-list {
+  position: relative;
+  z-index: 1;
   min-height: 0;
   flex: 1 1 auto;
   display: grid;
@@ -1746,13 +1890,14 @@ h1 {
 }
 
 .upgrade-list-copy strong {
-  overflow: hidden;
+  overflow: visible;
   color: inherit;
   font-size: 0.8rem;
   line-height: 1.28;
   font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: keep-all;
 }
 
 .upgrade-list-copy > span:not(.upgrade-stars) {
@@ -4237,7 +4382,7 @@ h1 {
   }
 
   .upgrade-app-shell .profile-plaque {
-    max-width: 176px;
+    max-width: 186px;
   }
 
   .shop-app-shell .player-meta {
@@ -4249,7 +4394,7 @@ h1 {
   }
 
   .upgrade-app-shell .player-meta {
-    display: none;
+    display: block;
   }
 
   .top-actions {
@@ -4289,6 +4434,7 @@ h1 {
   }
 
   .upgrade-app-shell .top-actions {
+    grid-template-columns: none;
     justify-items: end;
   }
 
@@ -4322,25 +4468,25 @@ h1 {
   }
 
   .equipment-hero-board {
-    grid-template-columns: minmax(104px, 0.76fr) minmax(0, 1.18fr) minmax(104px, 0.76fr);
-    gap: 7px;
+    grid-template-columns: minmax(96px, 0.76fr) minmax(0, 1.2fr) minmax(96px, 0.76fr);
+    gap: 6px;
   }
 
   .equipment-hero-slot {
-    min-height: 102px;
-    padding: 8px 7px 7px;
+    min-height: 86px;
+    padding: 7px 6px;
   }
 
   .equipment-slot-title {
-    font-size: 0.76rem;
+    font-size: 0.7rem;
   }
 
   .equipment-character-stage {
-    min-height: 470px;
+    min-height: 388px;
   }
 
   .equipment-character-art {
-    width: min(158%, 330px);
+    width: min(174%, 292px);
   }
 
   .upgrade-screen {
@@ -4353,7 +4499,7 @@ h1 {
   }
 
   .upgrade-game-board {
-    height: calc(100dvh - 250px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 268px - env(safe-area-inset-bottom));
     grid-template-columns: minmax(128px, 0.72fr) minmax(0, 1.28fr);
     gap: 7px;
   }
@@ -4412,14 +4558,15 @@ h1 {
   }
 
   .equipment-screen {
-    padding-top: 76px;
+    height: calc(100dvh - 98px);
+    padding-top: 72px;
     padding-right: 7px;
     padding-left: 7px;
-    padding-bottom: 106px;
+    padding-bottom: 96px;
   }
 
   .upgrade-screen {
-    padding-top: 72px;
+    padding-top: 6px;
     padding-right: 7px;
     padding-left: 7px;
   }
@@ -4478,26 +4625,29 @@ h1 {
   }
 
   .equipment-banner {
-    min-height: 64px;
+    min-height: 56px;
+    margin-bottom: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 
   .equipment-banner h2 {
-    font-size: 1.76rem;
+    font-size: 1.56rem;
   }
 
   .equipment-hero-board {
-    grid-template-columns: minmax(92px, 0.72fr) minmax(0, 1.22fr) minmax(92px, 0.72fr);
-    gap: 5px;
+    grid-template-columns: minmax(84px, 0.72fr) minmax(0, 1.22fr) minmax(84px, 0.72fr);
+    gap: 4px;
   }
 
   .equipment-slot-column {
-    gap: 6px;
+    gap: 5px;
   }
 
   .equipment-hero-slot {
-    min-height: 90px;
-    padding: 7px 6px;
-    border-radius: 15px;
+    min-height: 76px;
+    padding: 6px 5px;
+    border-radius: 14px;
   }
 
   .equipment-slot-title {
@@ -4512,12 +4662,13 @@ h1 {
   }
 
   .equipment-slot-preview {
-    min-height: 42px;
+    min-height: 32px;
     border-radius: 12px;
   }
 
   .equipment-slot-copy strong {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
+    line-height: 1.14;
   }
 
   .equipment-slot-copy > span:not(.equipment-stars),
@@ -4528,13 +4679,13 @@ h1 {
   .equipment-unequip-button {
     right: 5px;
     bottom: 5px;
-    min-height: 21px;
+    min-height: 20px;
     padding: 0 6px;
     font-size: 0.56rem;
   }
 
   .equipment-character-stage {
-    min-height: 400px;
+    min-height: 336px;
   }
 
   .equipment-character-toggle {
@@ -4550,21 +4701,22 @@ h1 {
   }
 
   .equipment-character-art {
-    width: min(184%, 286px);
+    width: min(192%, 248px);
+    max-height: 352px;
   }
 
   .equipment-character-aura {
-    width: min(162%, 310px);
-    top: 9%;
+    width: min(166%, 292px);
+    top: 7%;
   }
 
   .equipment-power-row {
-    gap: 8px;
-    margin-top: 10px;
+    gap: 7px;
+    margin-top: 7px;
   }
 
   .equipment-power-row div {
-    min-height: 60px;
+    min-height: 52px;
     border-radius: 17px;
   }
 
@@ -4583,7 +4735,7 @@ h1 {
   }
 
   .upgrade-game-board {
-    height: calc(100dvh - 242px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 268px - env(safe-area-inset-bottom));
     grid-template-columns: minmax(114px, 0.67fr) minmax(0, 1.33fr);
     gap: 6px;
   }
