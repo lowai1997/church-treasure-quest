@@ -17,9 +17,9 @@ const gearSellValues = {
 };
 const upgradeCost = 50;
 const maxUpgradeLevel = 9;
-const upgradePowerGain = 10;
+const upgradePowerGain = 20;
 const feedPetCost = 50;
-const petPowerGain = 10;
+const petPowerGain = 15;
 const unlockPetSlotCost = 1000;
 const maxPetSlots = 3;
 const avatarOptions = ['male-1', 'male-2', 'female-1', 'female-2'];

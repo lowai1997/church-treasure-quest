@@ -49,9 +49,9 @@ const mysteryBoxPrice = 100;
 const gearSellValues = { N: 30, R: 50, S: 100, SS: 250, SSS: 500 };
 const upgradeCost = 50;
 const maxUpgradeLevel = 9;
-const upgradePowerGain = 10;
+const upgradePowerGain = 20;
 const feedPetCost = 50;
-const petPowerGain = 10;
+const petPowerGain = 15;
 const unlockPetSlotCost = 1000;
 const maxPetSlots = 3;
 const rarityLabels = { N: '普通', R: '稀有', S: '超稀有', SS: '傳說', SSS: '神話' };
@@ -2224,7 +2224,7 @@ const renderPetSlot = (index, pet, availableSlots) => {
         <div class="pet-slot-name">${escapeHtml(pet.name)}</div>
         <div class="pet-slot-stats">
           <span>戰力 ${formatNumber(pet.power)}</span>
-          <span>Lv. ${formatNumber(pet.level)} / 10</span>
+          <span>Lv. ${formatNumber(pet.level)}</span>
         </div>
         <button class="pet-upgrade-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${tokenAmount(feedPetCost)}</button>
       </article>
@@ -2422,13 +2422,6 @@ const renderRank = () => {
       <section class="rank-hero-title" aria-label="排行榜">
         <h2>排行榜</h2>
         <span>RANKING</span>
-      </section>
-
-      <section class="rank-tabs" aria-label="排行種類">
-        <button class="active" type="button">戰力排行</button>
-        <button type="button" disabled>等級排行</button>
-        <button type="button" disabled>收藏排行</button>
-        <button type="button" disabled>公會排行</button>
       </section>
 
       <p class="rank-refresh-note">依照裝備與寵物總戰力排序</p>

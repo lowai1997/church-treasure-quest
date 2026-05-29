@@ -190,7 +190,7 @@ playerSchema.pre('validate', function ensureLegacyInventoryIds(next) {
       pet.petInstanceId = new mongoose.Types.ObjectId().toString();
     }
     if (pet.power === undefined || pet.power === null) {
-      pet.power = Number(pet.basePower || 0) + Math.max(0, Number(pet.level || 1) - 1) * 10;
+      pet.power = Number(pet.basePower || 0) + Math.max(0, Number(pet.level || 1) - 1) * 15;
     }
   });
   next();
