@@ -49,6 +49,13 @@ body {
   overflow-x: hidden;
 }
 
+body[data-view="login"] {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.2), rgba(255, 245, 236, 0.74) 64%, rgba(246, 239, 255, 0.9)),
+    url("./assets/ui/Index.png") center / cover no-repeat,
+    linear-gradient(180deg, #f4ecff 0%, #fff8ed 48%, #eef9ff 100%);
+}
+
 body::before,
 body::after {
   position: fixed;
@@ -72,6 +79,14 @@ body::after {
     linear-gradient(120deg, transparent 0 42%, rgba(255, 255, 255, 0.52) 44%, transparent 47% 100%);
   background-position: 0 0, 18px 24px, center;
   background-size: 42px 42px, 58px 58px, 100% 100%;
+}
+
+body[data-view="login"]::before {
+  opacity: 0;
+}
+
+body[data-view="login"]::after {
+  opacity: 0.24;
 }
 
 body[data-view="hunt"],
@@ -170,6 +185,10 @@ h3,
   transform: translateX(-50%);
   pointer-events: none;
   content: "";
+}
+
+body[data-view="login"] .app-mount::before {
+  opacity: 0;
 }
 
 .auth-screen,
@@ -2056,40 +2075,35 @@ h1 {
 
 .upgrade-selected-gear {
   display: grid;
-  grid-template-columns: minmax(72px, 0.46fr) minmax(0, 0.54fr);
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 6px;
-  text-align: left;
+  justify-items: center;
+  gap: 5px;
+  margin: 0 0 8px;
+  text-align: center;
 }
 
 .upgrade-selected-copy {
+  width: 100%;
   min-width: 0;
-  display: grid;
-  gap: 4px;
 }
 
 .upgrade-selected-copy h3 {
   margin: 0;
+  overflow: visible;
   color: #5a457a;
-  font-size: clamp(0.9rem, 3.8vw, 1.12rem);
-  line-height: 1.22;
+  font-size: var(--upgrade-name-size, 0.96rem);
+  line-height: 1.2;
   font-weight: 900;
   letter-spacing: 0.04em;
-}
-
-.upgrade-selected-copy span {
-  color: #817197;
-  font-size: 0.68rem;
-  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .upgrade-item-stage {
   position: relative;
-  height: clamp(104px, 24vw, 132px);
+  height: 92px;
   display: grid;
   place-items: center;
-  width: 100%;
+  width: min(100%, 126px);
   margin: 0;
 }
 

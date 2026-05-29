@@ -107,6 +107,20 @@ const itemNameWithUpgrade = (item, { alwaysShow = false } = {}) => {
   return `${escapeHtml(item?.name || '裝備')}${suffix}`;
 };
 
+const upgradeNameSize = (item = {}) => {
+  const nameLength = `${item?.name || ''}${itemUpgradeLevel(item) > 0 ? `+${itemUpgradeLevel(item)}` : ''}`.length;
+
+  if (nameLength > 12) {
+    return '0.72rem';
+  }
+
+  if (nameLength > 9) {
+    return '0.82rem';
+  }
+
+  return '0.96rem';
+};
+
 const equipmentSlots = [
   { key: 'weapon', label: '武器', limit: 2 },
   { key: 'helmet', label: '頭盔', limit: 1 },
@@ -2059,8 +2073,7 @@ const renderUpgradeDetail = (item) => {
           <div class="upgrade-featured-icon">${slotIcon(item?.type, item?.name, gearImageForItem(item))}</div>
         </div>
         <div class="upgrade-selected-copy">
-          <h3>${escapeHtml(item?.name || '裝備')}</h3>
-          <span>${escapeHtml(item?.rarity || 'N')} · ${escapeHtml(item?.type || '')}</span>
+          <h3 style="--upgrade-name-size: ${upgradeNameSize(item)};">${itemNameWithUpgrade(item)}</h3>
         </div>
       </div>
 
