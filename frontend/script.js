@@ -30,6 +30,7 @@ const state = {
   addGoldAmount: 100,
   boxReveal: null,
   petQuiz: null,
+  petSlotPicker: null,
   avatarPickerOpen: false,
   equipmentSlotPicker: null,
   busy: false
@@ -600,6 +601,8 @@ const clearSession = () => {
   state.incomingTrades = [];
   state.outgoingTrades = [];
   state.petCatalog = [];
+  state.petQuiz = null;
+  state.petSlotPicker = null;
   state.avatarPickerOpen = false;
   localStorage.removeItem('ctqToken');
 };
@@ -711,6 +714,7 @@ const renderShell = () => {
       </nav>
       ${state.boxReveal ? renderBoxReveal() : ''}
       ${state.petQuiz ? renderPetQuiz() : ''}
+      ${state.petSlotPicker ? renderPetPickerModal() : ''}
       ${state.avatarPickerOpen ? renderAvatarModal() : ''}
       ${state.equipmentSlotPicker ? renderEquipmentSlotModal() : ''}
     </section>
@@ -827,6 +831,31 @@ const renderPetQuiz = () => {
               `
             )
             .join('')}
+        </div>
+      </section>
+    </div>
+  `;
+};
+
+const renderPetPickerModal = () => {
+  const slotNumber = Number(state.petSlotPicker?.slotIndex || 0) + 1;
+
+  return `
+    <div class="modal-backdrop pet-picker-backdrop" role="dialog" aria-modal="true" aria-label="選擇寵物">
+      <section class="card pet-picker-modal">
+        <div class="card-header">
+          <div>
+            <h3>選擇寵物 ${formatNumber(slotNumber)}</h3>
+            <p>選一隻寵物放入這個欄位。</p>
+          </div>
+          <button class="icon-button" type="button" data-action="close-pet-picker" aria-label="關閉">關閉</button>
+        </div>
+        <div class="pet-picker-list">
+          ${
+            state.petCatalog.length
+              ? state.petCatalog.map(renderPetPickerChoice).join('')
+              : '<div class="empty-card">寵物清單載入中。</div>'
+          }
         </div>
       </section>
     </div>
@@ -2155,72 +2184,87 @@ const renderPets = () => {
   const pets = state.player.pets || [];
 
   return `
-    <section class="view-title">
-      <h2>寵物</h2>
-      <p>寵物戰力會加入總戰力。每次升級前需要答對一題聖經問題；答錯會消耗 ${tokenAmount(feedPetCost)} 與本次升級機會，答對則提升 ${formatNumber(petPowerGain)} 戰力。</p>
-    </section>
+    <section class="pet-screen">
+      <section class="pet-hero-title" aria-label="寵物">
+        <h2>寵物</h2>
+        <span>PET</span>
+      </section>
 
-    <section class="stats-grid">
-      <div class="stat-card"><span>寵物欄位</span><strong>${formatNumber(pets.length)} / ${formatNumber(availableSlots)}</strong></div>
-      <div class="stat-card"><span>寵物戰力</span><strong>${formatNumber(state.player.petPower)}</strong></div>
-      <div class="stat-card"><span>金幣</span><strong>${tokenAmount(state.player.gold)}</strong></div>
-    </section>
+      <section class="pet-info-panel">
+        <p>寵物戰力會加入總戰力。每次升級前需要答對一題聖經問題；答錯會消耗 ${tokenAmount(feedPetCost)} 與本次升級機會，答對則提升 ${formatNumber(petPowerGain)} 戰力。</p>
+      </section>
 
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3>我的寵物</h3>
-          <p>${pets.length ? '答對問題即可提升等級與戰力。' : '先從下方選擇一隻寵物。'}</p>
-        </div>
-        <button class="ghost-button" type="button" data-action="unlock-pet-slot" ${availableSlots >= maxPetSlots || state.player.gold < unlockPetSlotCost ? 'disabled' : ''}>解鎖欄位 ${tokenAmount(unlockPetSlotCost)}</button>
-      </div>
-      <div class="pet-grid">
-        ${
-          pets.length
-            ? pets.map(renderOwnedPetCard).join('')
-            : '<div class="empty-card">尚未擁有寵物。</div>'
-        }
-      </div>
-    </section>
+      <section class="pet-slot-board" aria-label="寵物欄位">
+        ${Array.from({ length: maxPetSlots })
+          .map((_, index) => renderPetSlot(index, pets[index], availableSlots))
+          .join('')}
+      </section>
 
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3>領養寵物</h3>
-          <p>每個已解鎖欄位可放一隻寵物。</p>
-        </div>
-      </div>
-      <div class="pet-grid">
-        ${
-          state.petCatalog.length
-            ? state.petCatalog.map((pet) => renderPetCatalogCard(pet, pets.length >= availableSlots)).join('')
-            : '<div class="empty-card">寵物清單載入中。</div>'
-        }
-      </div>
+      <section class="pet-total-panel" aria-label="寵物總戰力">
+        <span>寵物總戰力</span>
+        <strong>${formatNumber(state.player.petPower)}</strong>
+        <small>將加入總戰力</small>
+      </section>
     </section>
   `;
 };
 
-const renderOwnedPetCard = (pet) => `
-  <article class="pet-card">
-    <div class="pet-photo">${assetImage(petImageFor(pet), pet.name) || '<span aria-hidden="true">♡</span>'}</div>
-    <div class="pet-card-copy">
-      <strong>${escapeHtml(pet.name)}</strong>
-      <span>${escapeHtml(pet.type)} · Lv.${formatNumber(pet.level)} · 戰力 ${formatNumber(pet.power)}</span>
-    </div>
-    <button class="mini-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${tokenAmount(feedPetCost)}</button>
-  </article>
-`;
+const renderPetSlot = (index, pet, availableSlots) => {
+  const unlocked = index < availableSlots;
+  const slotNumber = index + 1;
 
-const renderPetCatalogCard = (pet, full) => `
-  <article class="pet-card">
-    <div class="pet-photo">${assetImage(petImageFor(pet), pet.name) || '<span aria-hidden="true">♡</span>'}</div>
-    <div class="pet-card-copy">
+  if (pet) {
+    return `
+      <article class="pet-slot-card filled">
+        <div class="pet-slot-label">寵物 ${formatNumber(slotNumber)}</div>
+        <div class="pet-stage">
+          <img class="pet-slot-art" src="assets/ui/pet/pet-slot-pedestal.png" alt="" loading="lazy" />
+          <div class="pet-stage-photo">${assetImage(petImageFor(pet), pet.name) || '<span aria-hidden="true">♡</span>'}</div>
+        </div>
+        <div class="pet-slot-name">${escapeHtml(pet.name)}</div>
+        <div class="pet-slot-stats">
+          <span>戰力 ${formatNumber(pet.power)}</span>
+          <span>Lv. ${formatNumber(pet.level)} / 10</span>
+        </div>
+        <button class="pet-upgrade-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${tokenAmount(feedPetCost)}</button>
+      </article>
+    `;
+  }
+
+  if (!unlocked) {
+    return `
+      <article class="pet-slot-card locked">
+        <div class="pet-slot-label">寵物 ${formatNumber(slotNumber)}</div>
+        <div class="pet-stage">
+          <img class="pet-slot-art" src="assets/ui/pet/pet-slot-locked.png" alt="" loading="lazy" />
+        </div>
+        <div class="pet-slot-name">尚未解鎖</div>
+        <button class="pet-upgrade-button" type="button" data-action="unlock-pet-slot" ${availableSlots >= maxPetSlots || state.player.gold < unlockPetSlotCost ? 'disabled' : ''}>解鎖欄位 ${tokenAmount(unlockPetSlotCost)}</button>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="pet-slot-card empty">
+      <button class="pet-slot-select" type="button" data-action="open-pet-picker" data-slot-index="${index}" aria-label="選擇寵物 ${formatNumber(slotNumber)}">
+        <span class="pet-slot-label">寵物 ${formatNumber(slotNumber)}</span>
+        <span class="pet-stage">
+          <img class="pet-slot-art" src="assets/ui/pet/pet-slot-pedestal.png" alt="" loading="lazy" />
+        </span>
+        <span class="pet-slot-name">選擇寵物</span>
+      </button>
+    </article>
+  `;
+};
+
+const renderPetPickerChoice = (pet) => `
+  <button class="pet-picker-choice" type="button" data-action="adopt-pet" data-pet-id="${escapeAttr(pet.petId)}">
+    <span class="pet-picker-photo">${assetImage(petImageFor(pet), pet.name) || '<span aria-hidden="true">♡</span>'}</span>
+    <span>
       <strong>${escapeHtml(pet.name)}</strong>
-      <span>${escapeHtml(pet.type)} · 基礎戰力 ${formatNumber(pet.basePower)}</span>
-    </div>
-    <button class="mini-button" type="button" data-action="adopt-pet" data-pet-id="${escapeAttr(pet.petId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '領養'}</button>
-  </article>
+      <small>${escapeHtml(pet.type)} · 基礎戰力 ${formatNumber(pet.basePower)}</small>
+    </span>
+  </button>
 `;
 
 const renderPlayers = () => {
@@ -2371,54 +2415,69 @@ const renderManagedPets = (player) => `
 
 const renderRank = () => {
   const topThree = state.rank.slice(0, 3);
+  const rankRows = state.rank.length > 3 ? state.rank.slice(3, 10) : state.rank;
 
   return `
-    <section class="view-title">
-      <h2>星光排行</h2>
-      <p>依照裝備與寵物總戰力排序，金幣不會計入戰力。</p>
-    </section>
+    <section class="rank-screen">
+      <section class="rank-hero-title" aria-label="排行榜">
+        <h2>排行榜</h2>
+        <span>RANKING</span>
+      </section>
 
-    ${
-      topThree.length
-        ? `
-          <section class="rank-podium" aria-label="前三名">
-            ${topThree
-              .map(
-                (player, index) => `
-                  <article class="podium-card card">
-                    <div class="rank-number">${index + 1}</div>
-                    <div class="rank-avatar">${playerAvatarIcon(player)}</div>
-                    <div class="rank-name">${escapeHtml(player.name)}</div>
-                    <div class="rank-score">${formatNumber(player.totalPower)}</div>
-                  </article>
-                `
-              )
-              .join('')}
-          </section>
-        `
-        : ''
-    }
+      <section class="rank-tabs" aria-label="排行種類">
+        <button class="active" type="button">戰力排行</button>
+        <button type="button" disabled>等級排行</button>
+        <button type="button" disabled>收藏排行</button>
+        <button type="button" disabled>公會排行</button>
+      </section>
 
-    <section class="rank-list" aria-label="排行榜列表">
+      <p class="rank-refresh-note">依照裝備與寵物總戰力排序</p>
+
       ${
-        state.rank.length
-          ? state.rank
-              .map(
-                (player, index) => `
-                  <article class="rank-row">
-                    <strong>${index + 1}</strong>
-                    <div class="rank-avatar">${playerAvatarIcon(player)}</div>
-                    <div>
-                      <strong>${escapeHtml(player.name)}</strong>
-                      <span>${tokenAmount(player.gold)} · 裝備 ${player.itemCount || 0}</span>
-                    </div>
-                    <div class="rank-total">${formatNumber(player.totalPower)}</div>
-                  </article>
-                `
-              )
-              .join('')
-          : '<div class="empty-card">排行榜尚無團員玩家。</div>'
+        topThree.length
+          ? `
+            <section class="rank-podium" aria-label="前三名">
+              ${topThree
+                .map(
+                  (player, index) => `
+                    <article class="podium-card rank-${index + 1}">
+                      <div class="rank-number">${index + 1}</div>
+                      <div class="rank-avatar">${playerAvatarIcon(player)}</div>
+                      <div class="rank-name">${escapeHtml(player.name)}</div>
+                      <div class="rank-score">⚔ ${formatNumber(player.totalPower)}</div>
+                    </article>
+                  `
+                )
+                .join('')}
+            </section>
+          `
+          : ''
       }
+
+      <section class="rank-list" aria-label="排行榜列表">
+        ${
+          rankRows.length
+            ? rankRows
+                .map(
+                  (player, index) => {
+                    const rank = state.rank.length > 3 ? index + 4 : index + 1;
+                    return `
+                      <article class="rank-row">
+                        <strong>${rank}</strong>
+                        <div class="rank-avatar">${playerAvatarIcon(player)}</div>
+                        <div>
+                          <strong>${escapeHtml(player.name)}</strong>
+                          <span>裝備 ${player.itemCount || 0}</span>
+                        </div>
+                        <div class="rank-total">⚔ ${formatNumber(player.totalPower)}</div>
+                      </article>
+                    `;
+                  }
+                )
+                .join('')
+            : '<div class="empty-card">排行榜尚無團員玩家。</div>'
+        }
+      </section>
     </section>
   `;
 };
@@ -2860,12 +2919,25 @@ app.addEventListener('click', async (event) => {
   }
 
   if (action === 'adopt-pet') {
+    state.petSlotPicker = null;
     await runAction(() =>
       api('/api/adoptPet', {
         method: 'POST',
         body: JSON.stringify({ petId: actionButton.dataset.petId })
       })
     );
+    return;
+  }
+
+  if (action === 'open-pet-picker') {
+    state.petSlotPicker = { slotIndex: Number(actionButton.dataset.slotIndex || 0) };
+    renderShell();
+    return;
+  }
+
+  if (action === 'close-pet-picker') {
+    state.petSlotPicker = null;
+    renderShell();
     return;
   }
 
