@@ -92,15 +92,61 @@ const hashString = (value) => {
   return hash;
 };
 
-const getDailyStoreItems = (items) => {
-  const today = new Date().toISOString().slice(0, 10);
-  return [...items]
+const getStoreDateKey = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+    .formatToParts(new Date())
+    .reduce((result, part) => {
+      result[part.type] = part.value;
+      return result;
+    }, {});
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
+const sortDailyItems = (items, seed) =>
+  [...items]
     .sort((left, right) => {
-      const leftHash = hashString(`${today}-${left._id.toString()}`);
-      const rightHash = hashString(`${today}-${right._id.toString()}`);
-      return leftHash - rightHash;
-    })
-    .slice(0, 5);
+      const leftHash = hashString(`${seed}-${left._id.toString()}`);
+      const rightHash = hashString(`${seed}-${right._id.toString()}`);
+      return leftHash - rightHash || String(left.name).localeCompare(String(right.name), 'zh-Hant');
+    });
+
+const getDailyStoreItems = (items, dateKey = getStoreDateKey()) => {
+  const rarityPlan = [
+    ['N', 2],
+    ['R', 1],
+    ['S', 1],
+    ['SS', 1]
+  ];
+  const selectedIds = new Set();
+  const selected = [];
+
+  rarityPlan.forEach(([rarity, count]) => {
+    const candidates = sortDailyItems(
+      items.filter((item) => item.rarity === rarity),
+      `${dateKey}-${rarity}`
+    );
+
+    candidates.slice(0, count).forEach((item) => {
+      selectedIds.add(item._id.toString());
+      selected.push(item);
+    });
+  });
+
+  if (selected.length < 5) {
+    const fallback = sortDailyItems(
+      items.filter((item) => !selectedIds.has(item._id.toString())),
+      `${dateKey}-fallback`
+    );
+    selected.push(...fallback.slice(0, 5 - selected.length));
+  }
+
+  return selected.slice(0, 5);
 };
 
 const chooseWeightedRarity = () => {
@@ -213,7 +259,7 @@ router.get('/getItems', verifyToken, async (req, res, next) => {
     const items = getDailyStoreItems(allItems);
     return res.json({
       items,
-      refreshDate: new Date().toISOString().slice(0, 10)
+      refreshDate: getStoreDateKey()
     });
   } catch (error) {
     return next(error);

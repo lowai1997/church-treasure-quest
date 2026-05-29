@@ -35,7 +35,7 @@ namespace ChurchGamePhotoSetup
 
             var title = new Label
             {
-                Text = "Map an exact gear or boss name to a local image file.",
+                Text = "Map an exact gear, boss, or pet name to a local image file.",
                 Left = 18,
                 Top = 16,
                 Width = 560,
@@ -61,7 +61,7 @@ namespace ChurchGamePhotoSetup
             typeBox.Top = 89;
             typeBox.Width = 160;
             typeBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            typeBox.Items.AddRange(new object[] { "Gear", "Boss" });
+            typeBox.Items.AddRange(new object[] { "Gear", "Boss", "Pet" });
             typeBox.SelectedIndex = 0;
             Controls.Add(typeBox);
 
@@ -108,7 +108,7 @@ namespace ChurchGamePhotoSetup
             commitBox.Left = 140;
             commitBox.Top = 296;
             commitBox.Width = 440;
-            commitBox.Text = "Update gear and boss photos";
+            commitBox.Text = "Update game photos";
             Controls.Add(commitBox);
 
             runCheckBox.Left = 140;
@@ -140,7 +140,7 @@ namespace ChurchGamePhotoSetup
             statusLabel.Top = 402;
             statusLabel.Width = 560;
             statusLabel.Height = 40;
-            statusLabel.Text = "Images are copied into frontend/assets/custom. No gear or boss photo is stored in the database.";
+            statusLabel.Text = "Images are copied into frontend/assets/custom. No gear, boss, or pet photo is stored in the database.";
             Controls.Add(statusLabel);
         }
 
@@ -202,9 +202,9 @@ namespace ChurchGamePhotoSetup
                     throw new InvalidOperationException("Please choose an image file.");
                 }
 
-                var isGear = String.Equals(typeBox.SelectedItem.ToString(), "Gear", StringComparison.OrdinalIgnoreCase);
-                var folderName = isGear ? "gear" : "bosses";
-                var mapFileName = isGear ? "gear-images.json" : "boss-images.json";
+                var selectedType = typeBox.SelectedItem.ToString();
+                var folderName = FolderNameForType(selectedType);
+                var mapFileName = MapFileNameForType(selectedType);
                 var targetFolder = Path.Combine(customRoot, folderName);
                 Directory.CreateDirectory(targetFolder);
 
@@ -535,6 +535,37 @@ namespace ChurchGamePhotoSetup
         {
             var safe = Regex.Replace(value.ToLowerInvariant(), "[^a-z0-9._-]+", "-").Trim('-');
             return String.IsNullOrWhiteSpace(safe) ? "image" : safe;
+        }
+
+        private static string NormalizeImageType(string value)
+        {
+            return String.IsNullOrWhiteSpace(value) ? "gear" : value.Trim().ToLowerInvariant();
+        }
+
+        private static string FolderNameForType(string value)
+        {
+            switch (NormalizeImageType(value))
+            {
+                case "boss":
+                    return "bosses";
+                case "pet":
+                    return "pets";
+                default:
+                    return "gear";
+            }
+        }
+
+        private static string MapFileNameForType(string value)
+        {
+            switch (NormalizeImageType(value))
+            {
+                case "boss":
+                    return "boss-images.json";
+                case "pet":
+                    return "pet-images.json";
+                default:
+                    return "gear-images.json";
+            }
         }
 
         private static Dictionary<string, string> ReadMap(string path)

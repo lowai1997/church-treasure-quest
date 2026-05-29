@@ -14,6 +14,7 @@ const state = {
   noticeBoard: null,
   gearImageMap: {},
   bossImageMap: {},
+  petImageMap: {},
   imageMapsLoaded: false,
   weeklyMissions: [],
   weeklyReports: [],
@@ -197,6 +198,7 @@ const navImageAssets = {
   equipment: 'assets/ui/nav/nav-equipment.png',
   upgrade: 'assets/ui/nav/nav-upgrade.png',
   pets: 'assets/ui/nav/nav-pets.png',
+  players: 'assets/ui/nav/nav-rank.png',
   boss: 'assets/ui/nav/nav-boss.png',
   rank: 'assets/ui/nav/nav-rank.png'
 };
@@ -237,6 +239,8 @@ const bossImageFor = (boss) => {
 const customImageForName = (map, name = '') => map[String(name || '').trim()] || '';
 const gearImageForItem = (item = {}) => customImageForName(state.gearImageMap, item.name);
 const bossDisplayImageFor = (boss = {}) => customImageForName(state.bossImageMap, boss.name) || bossImageFor(boss);
+const petImageFor = (pet = {}) =>
+  customImageForName(state.petImageMap, pet.name) || customImageForName(state.petImageMap, pet.petId);
 
 const slotIcon = (type, name = '', imageUrl = '') => {
   const imageAsset = gearImageFor(type, name);
@@ -681,7 +685,7 @@ const renderShell = () => {
         ${renderCurrentView()}
       </main>
 
-      <nav class="bottom-nav ${state.player.role === 'student' ? 'ornate-nav' : ''}" aria-label="主要導覽">
+      <nav class="bottom-nav ornate-nav" style="--nav-count: ${state.player.role === 'student' ? 7 : 5};" aria-label="主要導覽">
         ${navButton('hunt', '任務')}
         ${navButton('shop', '商店')}
         ${state.player.role === 'student' ? navButton('equipment', '裝備') : ''}
@@ -2049,11 +2053,15 @@ const renderUpgradeDetail = (item) => {
 
   return `
     <article class="upgrade-detail-panel" data-rarity="${escapeAttr(item?.rarity || 'N')}">
-      <h3>${escapeHtml(item?.name || '裝備')}</h3>
-
-      <div class="upgrade-item-stage">
-        <img class="upgrade-sigil" src="assets/ui/upgrade/upgrade-magic-sigil.png" alt="" loading="lazy" />
-        <div class="upgrade-featured-icon">${slotIcon(item?.type, item?.name, gearImageForItem(item))}</div>
+      <div class="upgrade-selected-gear">
+        <div class="upgrade-item-stage">
+          <img class="upgrade-sigil" src="assets/ui/upgrade/upgrade-magic-sigil.png" alt="" loading="lazy" />
+          <div class="upgrade-featured-icon">${slotIcon(item?.type, item?.name, gearImageForItem(item))}</div>
+        </div>
+        <div class="upgrade-selected-copy">
+          <h3>${escapeHtml(item?.name || '裝備')}</h3>
+          <span>${escapeHtml(item?.rarity || 'N')} · ${escapeHtml(item?.type || '')}</span>
+        </div>
       </div>
 
       <div class="upgrade-level-row" aria-label="升級等級">
@@ -2182,16 +2190,22 @@ const renderPets = () => {
 
 const renderOwnedPetCard = (pet) => `
   <article class="pet-card">
-    <strong>${escapeHtml(pet.name)}</strong>
-    <span>${escapeHtml(pet.type)} · Lv.${formatNumber(pet.level)} · 戰力 ${formatNumber(pet.power)}</span>
+    <div class="pet-photo">${assetImage(petImageFor(pet), pet.name) || '<span aria-hidden="true">♡</span>'}</div>
+    <div class="pet-card-copy">
+      <strong>${escapeHtml(pet.name)}</strong>
+      <span>${escapeHtml(pet.type)} · Lv.${formatNumber(pet.level)} · 戰力 ${formatNumber(pet.power)}</span>
+    </div>
     <button class="mini-button" type="button" data-action="feed-pet" data-pet-id="${escapeAttr(pet.petInstanceId)}" ${state.player.gold < feedPetCost ? 'disabled' : ''}>答題升級 ${tokenAmount(feedPetCost)}</button>
   </article>
 `;
 
 const renderPetCatalogCard = (pet, full) => `
   <article class="pet-card">
-    <strong>${escapeHtml(pet.name)}</strong>
-    <span>${escapeHtml(pet.type)} · 基礎戰力 ${formatNumber(pet.basePower)}</span>
+    <div class="pet-photo">${assetImage(petImageFor(pet), pet.name) || '<span aria-hidden="true">♡</span>'}</div>
+    <div class="pet-card-copy">
+      <strong>${escapeHtml(pet.name)}</strong>
+      <span>${escapeHtml(pet.type)} · 基礎戰力 ${formatNumber(pet.basePower)}</span>
+    </div>
     <button class="mini-button" type="button" data-action="adopt-pet" data-pet-id="${escapeAttr(pet.petId)}" ${full ? 'disabled' : ''}>${full ? '欄位已滿' : '領養'}</button>
   </article>
 `;
@@ -2426,13 +2440,15 @@ const loadImageMaps = async () => {
     return;
   }
 
-  const [gearImageMap, bossImageMap] = await Promise.all([
+  const [gearImageMap, bossImageMap, petImageMap] = await Promise.all([
     loadJsonAsset('assets/custom/gear-images.json'),
-    loadJsonAsset('assets/custom/boss-images.json')
+    loadJsonAsset('assets/custom/boss-images.json'),
+    loadJsonAsset('assets/custom/pet-images.json')
   ]);
 
   state.gearImageMap = gearImageMap && typeof gearImageMap === 'object' ? gearImageMap : {};
   state.bossImageMap = bossImageMap && typeof bossImageMap === 'object' ? bossImageMap : {};
+  state.petImageMap = petImageMap && typeof petImageMap === 'object' ? petImageMap : {};
   state.imageMapsLoaded = true;
 };
 
