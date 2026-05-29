@@ -1786,7 +1786,7 @@ h1 {
   height: calc(100dvh - 268px - env(safe-area-inset-bottom));
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(136px, 0.76fr) minmax(0, 1.24fr);
+  grid-template-columns: minmax(168px, 1.05fr) minmax(0, 0.95fr);
   gap: 8px;
   align-items: stretch;
 }
@@ -2065,10 +2065,10 @@ h1 {
 
 .upgrade-item-stage {
   position: relative;
-  height: clamp(88px, 21vw, 116px);
+  height: clamp(104px, 24vw, 132px);
   display: grid;
   place-items: center;
-  margin: 0 auto 5px;
+  margin: 0 auto 7px;
 }
 
 .upgrade-sigil {
@@ -2085,7 +2085,7 @@ h1 {
 }
 
 .upgrade-featured-icon {
-  width: min(50%, 92px);
+  width: min(64%, 118px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -4390,24 +4390,39 @@ h1 {
 }
 
 @media (max-width: 520px) {
+  .equipment-app-shell {
+    min-height: 100dvh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: calc(116px + env(safe-area-inset-bottom));
+  }
+
   .equipment-screen {
-    --equipment-bottom-clearance: calc(8px + env(safe-area-inset-bottom));
+    --equipment-bottom-clearance: 18px;
+    height: auto;
+    min-height: calc(100dvh - 116px - env(safe-area-inset-bottom));
+    overflow: visible;
   }
 
   .equipment-app-shell .content-stack {
-    flex: 1 1 0;
+    display: block;
     height: auto;
+    overflow: visible;
+  }
+
+  .equipment-inventory-section {
+    padding-bottom: calc(126px + env(safe-area-inset-bottom));
   }
 
   .equipment-app-shell .bottom-nav.ornate-nav {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    flex: 0 0 auto;
-    width: 100%;
+    position: fixed;
+    right: 50%;
+    bottom: 0;
+    width: min(100%, 520px);
     min-height: calc(106px + env(safe-area-inset-bottom));
     padding: 22px clamp(40px, 11vw, 54px) calc(18px + env(safe-area-inset-bottom));
-    transform: none;
+    transform: translateX(50%);
   }
 
   .equipment-app-shell .bottom-nav.ornate-nav .nav-button {
@@ -4559,7 +4574,7 @@ h1 {
 
   .upgrade-game-board {
     height: calc(100dvh - 268px - env(safe-area-inset-bottom));
-    grid-template-columns: minmax(128px, 0.72fr) minmax(0, 1.28fr);
+    grid-template-columns: minmax(166px, 1fr) minmax(0, 0.96fr);
     gap: 7px;
   }
 
@@ -4569,14 +4584,14 @@ h1 {
   }
 
   .upgrade-list-item {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 42px minmax(0, 1fr);
     gap: 6px;
     min-height: 66px;
   }
 
   .upgrade-list-icon {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
   }
 
   .upgrade-guide-art {
@@ -4803,7 +4818,7 @@ h1 {
 
   .upgrade-game-board {
     height: calc(100dvh - 268px - env(safe-area-inset-bottom));
-    grid-template-columns: minmax(114px, 0.67fr) minmax(0, 1.33fr);
+    grid-template-columns: minmax(154px, 0.96fr) minmax(0, 1.04fr);
     gap: 6px;
   }
 
@@ -4816,14 +4831,14 @@ h1 {
   }
 
   .upgrade-list-item {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: 38px minmax(0, 1fr);
     min-height: 60px;
     padding: 5px;
   }
 
   .upgrade-list-icon {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 12px;
   }
 
@@ -4841,7 +4856,7 @@ h1 {
   }
 
   .upgrade-item-stage {
-    height: 76px;
+    height: 88px;
   }
 
   .upgrade-power-row {

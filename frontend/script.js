@@ -166,12 +166,12 @@ const avatarImageAssets = {
 };
 
 const gearImageAssets = {
-  weapon: 'assets/icons/gear-weapon.png',
-  helmet: 'assets/icons/gear-helmet.png',
-  armor: 'assets/icons/gear-armor.png',
-  pants: 'assets/icons/gear-pants.png',
-  shoes: 'assets/icons/gear-shoes.png',
-  accessory: 'assets/icons/gear-accessory.png'
+  weapon: 'assets/ui/equipment/slots/slot-weapon.png',
+  helmet: 'assets/ui/equipment/slots/slot-helmet.png',
+  armor: 'assets/ui/equipment/slots/slot-armor.png',
+  pants: 'assets/ui/equipment/slots/slot-pants.png',
+  shoes: 'assets/ui/equipment/slots/slot-shoes.png',
+  accessory: 'assets/ui/equipment/slots/slot-accessory.png'
 };
 
 const weaponImageAssets = [
@@ -313,6 +313,17 @@ const navSymbol = (view) =>
   })[view] || '✦';
 
 const navIconFor = (view) => navImageAssets[view] || '';
+
+const defaultViewForRole = (role) => (role === 'teacher' ? 'hunt' : 'shop');
+
+const isNavViewAllowed = (view, role) => {
+  const teacherViews = ['hunt', 'shop', 'players', 'boss', 'rank'];
+  const studentViews = ['hunt', 'shop', 'equipment', 'upgrade', 'pets', 'boss', 'rank'];
+  return (role === 'teacher' ? teacherViews : studentViews).includes(view);
+};
+
+const normalizeViewForRole = (view, role) =>
+  isNavViewAllowed(view, role) ? view : defaultViewForRole(role);
 
 const crestIcon = () => `
   <svg viewBox="0 0 64 64" aria-hidden="true">
@@ -552,7 +563,7 @@ const setSession = ({ token, player }) => {
   state.token = token;
   state.player = player;
   localStorage.setItem('ctqToken', token);
-  state.view = player.role === 'teacher' ? 'hunt' : 'shop';
+  state.view = defaultViewForRole(player.role);
 };
 
 const clearSession = () => {
@@ -2480,6 +2491,7 @@ const refreshViewData = async () => {
   }
 
   await loadMe();
+  state.view = normalizeViewForRole(state.view, state.player?.role);
   await loadImageMaps();
 
   if (state.view === 'shop') {
@@ -2624,7 +2636,20 @@ app.addEventListener('click', async (event) => {
   }
 
   if (nav) {
-    state.view = nav.dataset.view;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const nextView = nav.dataset.view;
+
+    if (!isNavViewAllowed(nextView, state.player?.role)) {
+      return;
+    }
+
+    if (state.view === nextView) {
+      return;
+    }
+
+    state.view = nextView;
     renderLoading();
     try {
       await refreshViewData();
@@ -3173,7 +3198,7 @@ const boot = async () => {
   renderLoading();
   try {
     await loadMe();
-    state.view = state.player.role === 'teacher' ? 'hunt' : 'shop';
+    state.view = defaultViewForRole(state.player.role);
     await refreshViewData();
   } catch (error) {
     clearSession();
