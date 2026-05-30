@@ -46,6 +46,8 @@ const formatNumber = (value) => new Intl.NumberFormat('zh-Hant-TW').format(Numbe
 const totalPower = (player) => Number(player?.totalPower ?? 0);
 const rarityRank = { N: 1, R: 2, S: 3, SS: 4, SSS: 5 };
 const mysteryBoxPrice = 100;
+const firstLimitedBoxPrice = 1000;
+const firstLimitedBoxRewards = ['恩屯雀卡', 'Transfire 的懷表', 'Transfire 的指環'];
 const gearSellValues = { N: 30, R: 50, S: 100, SS: 250, SSS: 500 };
 const upgradeCost = 50;
 const maxUpgradeLevel = 9;
@@ -926,6 +928,29 @@ const renderShop = () => {
               ? state.items.map(renderShopItemCard).join('')
               : '<div class="empty-card">商店尚未建立裝備，請先執行 seed 或等待伺服器初始化。</div>'
           }
+        </div>
+      </section>
+
+      <section class="shop-chest-panel first-limited-chest-panel" aria-label="初回限定寶箱">
+        <img class="shop-chest-art" src="assets/ui/treasure-chest.png" alt="初回限定寶箱" />
+        <div class="shop-chest-copy">
+          <div class="shop-section-title">
+            <span>初回限定寶箱</span>
+            <small>每位團員限購 1 次 · 必得 SSS 裝飾品</small>
+          </div>
+          <p class="first-limited-rewards">各 33.3%：${firstLimitedBoxRewards.map((name) => escapeHtml(name)).join(' · ')}</p>
+          <button class="shop-chest-button" type="button" data-action="open-first-limited-box" ${
+            state.player.firstLimitedBoxPurchased || Number(state.player.gold || 0) < firstLimitedBoxPrice ? 'disabled' : ''
+          }>
+            <span class="shop-price">${tokenAmount(firstLimitedBoxPrice)}</span>
+            <strong>${
+              state.player.firstLimitedBoxPurchased
+                ? '已購買'
+                : Number(state.player.gold || 0) < firstLimitedBoxPrice
+                  ? '金幣不足'
+                  : '限定開啟'
+            }</strong>
+          </button>
         </div>
       </section>
 
@@ -2794,6 +2819,33 @@ app.addEventListener('click', async (event) => {
     state.busy = true;
     try {
       const result = await api('/api/openBox', {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+      state.player = result.player;
+      state.boxReveal = { reward: result.reward };
+      renderShell();
+      showToast(result.message);
+      window.setTimeout(async () => {
+        state.boxReveal = null;
+        await refreshViewData();
+      }, 2800);
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      state.busy = false;
+    }
+    return;
+  }
+
+  if (action === 'open-first-limited-box') {
+    if (state.busy) {
+      return;
+    }
+
+    state.busy = true;
+    try {
+      const result = await api('/api/openFirstLimitedBox', {
         method: 'POST',
         body: JSON.stringify({})
       });

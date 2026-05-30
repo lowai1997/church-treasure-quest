@@ -125,6 +125,10 @@ const playerSchema = new mongoose.Schema(
       default: 0,
       min: 0
     },
+    firstLimitedBoxPurchased: {
+      type: Boolean,
+      default: false
+    },
     items: {
       type: [playerItemSchema],
       default: []

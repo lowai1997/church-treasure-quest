@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Item from '../models/Item.js';
 import Player from '../models/Player.js';
 import TradeOffer from '../models/TradeOffer.js';
@@ -8,6 +9,8 @@ import { drawBibleQuestion, isBibleAnswerCorrect } from '../utils/bibleQuestions
 
 const router = express.Router();
 const mysteryBoxPrice = 100;
+const firstLimitedBoxPrice = 1000;
+const firstLimitedBoxRewardNames = ['恩屯雀卡', 'Transfire 的懷表', 'Transfire 的指環'];
 const gearSellValues = {
   N: 30,
   R: 50,
@@ -117,6 +120,7 @@ const sortDailyItems = (items, seed) =>
     });
 
 const getDailyStoreItems = (items, dateKey = getStoreDateKey()) => {
+  const storeItems = items.filter((item) => !firstLimitedBoxRewardNames.includes(item.name));
   const rarityPlan = [
     ['N', 2],
     ['R', 1],
@@ -128,7 +132,7 @@ const getDailyStoreItems = (items, dateKey = getStoreDateKey()) => {
 
   rarityPlan.forEach(([rarity, count]) => {
     const candidates = sortDailyItems(
-      items.filter((item) => item.rarity === rarity),
+      storeItems.filter((item) => item.rarity === rarity),
       `${dateKey}-${rarity}`
     );
 
@@ -140,7 +144,7 @@ const getDailyStoreItems = (items, dateKey = getStoreDateKey()) => {
 
   if (selected.length < 5) {
     const fallback = sortDailyItems(
-      items.filter((item) => !selectedIds.has(item._id.toString())),
+      storeItems.filter((item) => !selectedIds.has(item._id.toString())),
       `${dateKey}-fallback`
     );
     selected.push(...fallback.slice(0, 5 - selected.length));
@@ -166,12 +170,14 @@ const chooseWeightedRarity = () => {
 
 const createInventoryItem = (item) => ({
   item: item._id,
+  inventoryId: new mongoose.Types.ObjectId().toString(),
   name: item.name,
   type: item.type,
   rarity: item.rarity,
   price: item.price,
   power: item.power,
-  upgradeLevel: 0
+  upgradeLevel: 0,
+  acquiredAt: new Date()
 });
 
 const createTradeItemSnapshot = (item) => ({
@@ -347,7 +353,7 @@ router.post('/openBox', verifyToken, requireRole('student'), async (req, res, ne
     }
 
     const rarity = chooseWeightedRarity();
-    const rewards = await Item.find({ rarity });
+    const rewards = await Item.find({ rarity, name: { $nin: firstLimitedBoxRewardNames } });
 
     if (!rewards.length) {
       return res.status(404).json({ message: '商店目前沒有可抽取的裝備。' });
@@ -362,6 +368,52 @@ router.post('/openBox', verifyToken, requireRole('student'), async (req, res, ne
 
     return res.json({
       message: `神秘盒開出了 ${reward.rarity} ${reward.name}。`,
+      reward,
+      player: player.toSafeObject()
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/openFirstLimitedBox', verifyToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const rewardName = firstLimitedBoxRewardNames[Math.floor(Math.random() * firstLimitedBoxRewardNames.length)];
+    const reward = await Item.findOne({ name: rewardName, rarity: 'SSS', type: '裝飾品' });
+
+    if (!reward) {
+      return res.status(404).json({ message: '初回限定寶箱尚未準備完成，請稍後再試。' });
+    }
+
+    const player = await Player.findOneAndUpdate(
+      {
+        _id: req.user._id,
+        firstLimitedBoxPurchased: { $ne: true },
+        gold: { $gte: firstLimitedBoxPrice }
+      },
+      {
+        $inc: { gold: -firstLimitedBoxPrice },
+        $set: { firstLimitedBoxPurchased: true },
+        $push: { items: createInventoryItem(reward) }
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!player) {
+      const currentPlayer = await Player.findById(req.user._id);
+
+      if (currentPlayer?.firstLimitedBoxPurchased) {
+        return res.status(400).json({ message: '初回限定寶箱每位團員只可購買一次。' });
+      }
+
+      return res.status(400).json({ message: '金幣不足，無法開啟初回限定寶箱。' });
+    }
+
+    player.recalculatePower();
+    await player.save();
+
+    return res.json({
+      message: `初回限定寶箱開出了 ${reward.rarity} ${reward.name}。`,
       reward,
       player: player.toSafeObject()
     });

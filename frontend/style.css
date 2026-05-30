@@ -2607,6 +2607,14 @@ h1 {
   border-radius: 22px;
 }
 
+.first-limited-chest-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 252, 238, 0.82), rgba(249, 232, 255, 0.78)),
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.96), transparent 9rem),
+    radial-gradient(circle at 86% 18%, rgba(255, 224, 151, 0.54), transparent 9rem);
+  border-color: rgba(216, 184, 111, 0.58);
+}
+
 .shop-chest-art {
   width: 100%;
   min-width: 86px;
@@ -2655,12 +2663,23 @@ h1 {
   letter-spacing: 0.08em;
 }
 
+.shop-chest-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.18);
+  opacity: 0.64;
+}
+
 .shop-chest-copy p {
   margin: 0;
   color: #8d7da5;
   font-size: 0.68rem;
   font-weight: 900;
   text-align: center;
+}
+
+.first-limited-rewards {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .mission-app-shell {

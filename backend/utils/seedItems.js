@@ -108,7 +108,10 @@ const rawItems = [
   ['沙得拉火瓶', 'S', '裝飾品'],
   ['巴別之飾', 'S', '裝飾品'],
   ['聖約脈環', 'SS', '裝飾品'],
-  ['書卷神印', 'SSS', '裝飾品']
+  ['書卷神印', 'SSS', '裝飾品'],
+  ['恩屯雀卡', 'SSS', '裝飾品'],
+  ['Transfire 的懷表', 'SSS', '裝飾品'],
+  ['Transfire 的指環', 'SSS', '裝飾品']
 ];
 
 export const defaultItems = rawItems.map(([name, rarity, type]) => ({
